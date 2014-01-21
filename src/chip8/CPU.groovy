@@ -45,6 +45,8 @@ class CPU {
                 break
             case (0x00E0):
                 // 00E0 - Clear the screen
+                graphics = new boolean[64 * 32]
+                programCounter += 2
                 break
             case (0x00EE):
                 // 00EE - Returns from a subroutine
@@ -59,39 +61,88 @@ class CPU {
                 break
             case (opcode << 12 == 0x3000):
                 // 3XNN - Skips the next instruction if VX equals NN
+                def x = (opcode & 0x0F00) >> 8
+                if (vRegister[x] == (opcode & 0x00FF))  {
+                    programCounter += 2
+                }
+                programCounter += 2
                 break
             case (opcode << 12 == 0x4000):
                 // 4XNN - Skips the next instruction if VX doesn't equal NN
+                def x = (opcode & 0x0F00) >> 8
+                if (vRegister[x] != (opcode & 0x00FF))  {
+                    programCounter += 2
+                }
+                programCounter += 2
                 break
             case (opcode << 12 == 0x5000):
                 // 5XY0 - Skips the next instruction if VX equals VY.
+                def x = (opcode & 0x0F00) >> 8
+                def y = (opcode & 0x00F0) >> 4
+                if (vRegister[x] == vRegister[y]) {
+                    programCounter += 2
+                }
+                programCounter += 2
                 break
             case (opcode << 12 == 0x6000):
                 // 6XNN - Sets VX to NN
+                def x = (opcode & 0x0F00) >> 8
+                vRegister[x] = opcode & 0x00FF
+                programCounter += 2
                 break
             case (opcode << 12 == 0x7000):
                 // 7XNN - Adds NN to VX
+                def x = (opcode & 0x0F00) >> 8
+                vRegister[x] += (opcode & 0x00FF)
+                programCounter += 2
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x0000):
                 // 8XY0 - Sets VX to the value of VY
+                def x = (opcode & 0x0F00) >> 8
+                def y = (opcode & 0x00F0) >> 4
+                vRegister[x] = vRegister[y]
+                programCounter += 2
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x1000):
                 // 8XY1 - Sets VX to VX or VY
+                def x = (opcode & 0x0F00) >> 8
+                def y = (opcode & 0x00F0) >> 4
+                vRegister[x] = vRegister[x] | vRegister[y]
+                programCounter += 2
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x2000):
                 // 8XY2 - Sets VX to VX and VY
+                def x = (opcode & 0x0F00) >> 8
+                def y = (opcode & 0x00F0) >> 4
+                vRegister[x] = vRegister[x] & vRegister[y]
+                programCounter += 2
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x3000):
                 // 8XY3 - Sets VX to VX xor VY
+                def x = (opcode & 0x0F00) >> 8
+                def y = (opcode & 0x00F0) >> 4
+                vRegister[x] = vRegister[x] ^ vRegister[y]
+                programCounter += 2
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x4000):
                 // 8XY4 - Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't
+                def x = (opcode & 0x0F00) >> 8
+                def y = (opcode & 0x00F0) >> 4
+                if(vRegister[y] > (0x00FF - vRegister[x])) {
+                    vRegister[0xF] = 1 //carry
+                } else {
+                    vRegister[0xF] = 0;
+                }
+                vRegister[x] += vRegister[y];
+                programCounter += 2;
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x5000):
                 // 8XY5 - VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x6000):
                 // 8XY6 - Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift
+                def x = (opcode & 0x0F00) >> 8
+                // needs implementation
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x7000):
                 // 8XY7 - Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't
