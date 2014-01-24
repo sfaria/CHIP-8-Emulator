@@ -138,14 +138,35 @@ class CPU {
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x5000):
                 // 8XY5 - VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't
+                def x = (opcode & 0x0F00) >> 8
+                def y = (opcode & 0x00F0) >> 4
+                def borrow = (vRegister[x] - vRegister[y]) & (1 << 16)
+                if (borrow) {
+                    vRegister[0xF] = 0
+                } else {
+                    vRegister[0xF] = 1
+                }
+                programCounter += 2
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x6000):
                 // 8XY6 - Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift
                 def x = (opcode & 0x0F00) >> 8
-                // needs implementation
+                vRegister[0xF] = vRegister[x] & (-vRegister[x])
+                vRegister[x] = vRegister[x] >> 1
+                programCounter += 2
                 break
             case (opcode << 12 == 0x8000 && opcode << 16 == 0x7000):
                 // 8XY7 - Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't
+                def x = (opcode & 0x0F00) >> 8
+                def y = (opcode & 0x00F0) >> 4
+                vRegister[x] = vRegister[y] - vRegister[x]
+                def borrow = vRegister[x] & (1<<16)
+                if (borrow) {
+                    vRegister[0xF] = 0
+                } else {
+                    vRegister[0xF] = 1
+                }
+                programCounter += 2
                 break
             case(opcode << 12 == 0x8000 && opcode << 16 == 0xE000):
                 // 8XYE - Shifts VX left by one. VF is set to the value of the most significant bit of VX before the shift
