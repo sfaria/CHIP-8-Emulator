@@ -38,9 +38,11 @@ class CPU {
     }
 
     def emulateCycle(Closure renderCallback) {
-        def opcode = memory[programCounter] << 8 | memory[programCounter + 1]
-        switch (opcode) {
-            case (opcode << 12 == 0x0000):
+        def render = false
+
+        currentOpcode = memory[programCounter] << 8 | memory[programCounter + 1]
+        switch (currentOpcode) {
+            case ((currentOpcode & 0x0FFF) == 0x0000):
                 // 0NNN - Calls RCA 1802 program at address NNN.
                 break
             case (0x00E0):
@@ -51,83 +53,83 @@ class CPU {
             case (0x00EE):
                 // 00EE - Returns from a subroutine
                 break
-            case (opcode << 12 == 0x1000):
+            case ((currentOpcode & 0x0FFF) == 0x1000):
                 // 1NNN - Jumps to memory address NNN
                 break
-            case (opcode << 12 == 0x2000):
+            case ((currentOpcode & 0x0FFF) == 0x2000):
                 // 2NNN - Jumps to subroutine at NNN
                 stack[stackPointer++] = programCounter
-                programCounter = opcode & 0x0FFF
+                programCounter = currentOpcode & 0x0FFF
                 break
-            case (opcode << 12 == 0x3000):
+            case ((currentOpcode & 0x0FFF) == 0x3000):
                 // 3XNN - Skips the next instruction if VX equals NN
-                def x = (opcode & 0x0F00) >> 8
-                if (vRegister[x] == (opcode & 0x00FF))  {
+                def x = (currentOpcode & 0x0F00) >> 8
+                if (vRegister[x] == (currentOpcode & 0x00FF))  {
                     programCounter += 2
                 }
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x4000):
+            case ((currentOpcode & 0x0FFF) == 0x4000):
                 // 4XNN - Skips the next instruction if VX doesn't equal NN
-                def x = (opcode & 0x0F00) >> 8
-                if (vRegister[x] != (opcode & 0x00FF))  {
+                def x = (currentOpcode & 0x0F00) >> 8
+                if (vRegister[x] != (currentOpcode & 0x00FF))  {
                     programCounter += 2
                 }
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x5000):
+            case ((currentOpcode & 0x0FFF) == 0x5000):
                 // 5XY0 - Skips the next instruction if VX equals VY.
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
                 if (vRegister[x] == vRegister[y]) {
                     programCounter += 2
                 }
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x6000):
+            case ((currentOpcode & 0x0FFF) == 0x6000):
                 // 6XNN - Sets VX to NN
-                def x = (opcode & 0x0F00) >> 8
-                vRegister[x] = opcode & 0x00FF
+                def x = (currentOpcode & 0x0F00) >> 8
+                vRegister[x] = currentOpcode & 0x00FF
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x7000):
+            case ((currentOpcode & 0x0FFF) == 0x7000):
                 // 7XNN - Adds NN to VX
-                def x = (opcode & 0x0F00) >> 8
-                vRegister[x] += (opcode & 0x00FF)
+                def x = (currentOpcode & 0x0F00) >> 8
+                vRegister[x] += (currentOpcode & 0x00FF)
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x8000 && opcode << 16 == 0x0000):
+            case ((currentOpcode & 0x0FF0) == 0x8000):
                 // 8XY0 - Sets VX to the value of VY
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
                 vRegister[x] = vRegister[y]
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x8000 && opcode << 16 == 0x1000):
+            case ((currentOpcode & 0x0FF0) == 0x8001):
                 // 8XY1 - Sets VX to VX or VY
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
                 vRegister[x] = vRegister[x] | vRegister[y]
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x8000 && opcode << 16 == 0x2000):
+            case ((currentOpcode & 0x0FF0) == 0x8002):
                 // 8XY2 - Sets VX to VX and VY
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
                 vRegister[x] = vRegister[x] & vRegister[y]
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x8000 && opcode << 16 == 0x3000):
+            case ((currentOpcode & 0x0FF0) == 0x8003):
                 // 8XY3 - Sets VX to VX xor VY
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
                 vRegister[x] = vRegister[x] ^ vRegister[y]
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x8000 && opcode << 16 == 0x4000):
+            case ((currentOpcode & 0x0FF0) == 0x8004):
                 // 8XY4 - Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
                 if(vRegister[y] > (0x00FF - vRegister[x])) {
                     vRegister[0xF] = 1 //carry
                 } else {
@@ -136,10 +138,10 @@ class CPU {
                 vRegister[x] += vRegister[y];
                 programCounter += 2;
                 break
-            case (opcode << 12 == 0x8000 && opcode << 16 == 0x5000):
+            case ((currentOpcode & 0x0FF0) == 0x8005):
                 // 8XY5 - VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
                 def borrow = (vRegister[x] - vRegister[y]) & (1 << 16)
                 if (borrow) {
                     vRegister[0xF] = 0
@@ -148,17 +150,17 @@ class CPU {
                 }
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x8000 && opcode << 16 == 0x6000):
+            case ((currentOpcode & 0x0FF0) == 0x8006):
                 // 8XY6 - Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift
-                def x = (opcode & 0x0F00) >> 8
+                def x = (currentOpcode & 0x0F00) >> 8
                 vRegister[0xF] = vRegister[x] & (-vRegister[x])
                 vRegister[x] = vRegister[x] >> 1
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x8000 && opcode << 16 == 0x7000):
+            case ((currentOpcode & 0x0FF0) == 0x8007):
                 // 8XY7 - Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
                 vRegister[x] = vRegister[y] - vRegister[x]
                 def borrow = vRegister[x] & (1<<16)
                 if (borrow) {
@@ -168,106 +170,111 @@ class CPU {
                 }
                 programCounter += 2
                 break
-            case(opcode << 12 == 0x8000 && opcode << 16 == 0xE000):
+            case((currentOpcode & 0x0FF0) == 0x800E):
                 // 8XYE - Shifts VX left by one. VF is set to the value of the most significant bit of VX before the shift
-                def x = (opcode & 0x0F00) >> 8
+                def x = (currentOpcode & 0x0F00) >> 8
                 if ((vRegister[x] & 0xF000) == vRegister[0xF]) {
                     vRegister[x] << 1
                 }
                 programCounter += 2
                 break
-            case (opcode << 12 == 0x9000):
+            case ((currentOpcode & 0x0FFF) == 0x9000):
                 // 9XY0 - Skips the next instruction if VX doesn't equal VY
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
                 if (x != y) {
                     programCounter += 2
                 }
                 programCounter += 2
                 break
-            case (opcode << 12 == 0xA000):
+            case ((currentOpcode & 0x0FFF) == 0xA000):
                 // ANNN - Sets I to the address NNN
-                indexRegister = opcode & 0x0FF
+                indexRegister = currentOpcode & 0x0FF
                 programCounter += 2
                 break
-            case (opcode << 12 == 0xB000):
+            case ((currentOpcode & 0x0FFF) == 0xB000):
                 // BNNN - Jumps to the address NNN plus V0
                 break
-            case (opcode << 12 == 0xC000):
+            case ((currentOpcode & 0x0FFF) == 0xC000):
                 // CXNN - Sets VX to a random number and NN
                 break
-            case (opcode << 12 == 0xD000):
+            case ((currentOpcode & 0x0FFF) == 0xD000):
                 // DXYN - Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
                 // Each row of 8 pixels is read as bit-coded (with the most significant bit of each byte displayed on the left)
                 // starting from memory location I; I value doesn't change after the execution of this instruction. As described
                 // above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0
                 // if that doesn't happen
-                def x = (opcode & 0x0F00) >> 8
-                def y = (opcode & 0x00F0) >> 4
-                def height = (opcode & 0x000F) >> 8
+                def x = (currentOpcode & 0x0F00) >> 8
+                def y = (currentOpcode & 0x00F0) >> 4
+                def height = (currentOpcode & 0x000F) >> 8
                 // needs the rest of the implementation
+
+                programCounter += 2
+                render = true
                 break
-            case (opcode << 12 == 0xE000 && opcode << 16 == 0xE000):
+            case ((currentOpcode & 0x0FF0) == 0xE00E):
                 // EX9E - Skips the next instruction if the key stored in VX is pressed
                 break
-            case (opcode << 12 == 0xE000 && opcode << 16 == 0x1000):
+            case ((currentOpcode & 0x0FF0) == 0xE001):
                 // EXA1 - Skips the next instruction if the key stored in VX isn't pressed
                 break
-            case (opcode << 12 == 0xF000 && opcode << 16 == 0x7000):
+            case ((currentOpcode & 0x0FF0) == 0xF007):
                 // FX07 - Sets VX to the value of the delay timer
-                vRegister[(opcode & 0x0F00) >> 8] = delayTimer
+                vRegister[(currentOpcode & 0x0F00) >> 8] = delayTimer
                 programCounter += 2
                 break
-            case (opcode << 12 == 0xF000 && opcode << 16 == 0xA000):
+            case ((currentOpcode & 0x0FF0) == 0xF00A):
                 // FX0A - A key press is awaited, and then stored in VX
                 break
-            case (opcode << 12 == 0xF000 && opcode << 16 == 0x5000):
+            case ((currentOpcode & 0x0F00) == 0xF015):
                 // FX15 - Sets the delay timer to VX
-                delayTimer = vRegister[(opcode & 0x0F00 >> 8)]
+                delayTimer = vRegister[(currentOpcode & 0x0F00 >> 8)]
                 programCounter += 2
                 break
-            case (opcode << 12 == 0xF000 && opcode << 16 == 0x8000):
+            case ((currentOpcode & 0x0F00) == 0xF018):
                 // FX18 - Sets the sound timer to VX
-                soundTimer = vRegister[(opcode & 0x0F00) >> 8]
+                soundTimer = vRegister[(currentOpcode & 0x0F00) >> 8]
                 programCounter += 2
                 break
-            case (opcode << 12 == 0xF000 && opcode << 16 == 0xE000):
+            case ((currentOpcode & 0x0F00) == 0xF01E):
                 // FX1E - Adds VX to I
-                indexRegister += vRegister[(opcode & 0x0F00) >> 8]
+                indexRegister += vRegister[(currentOpcode & 0x0F00) >> 8]
                 programCounter += 2
                 break
-            case (opcode << 12 == 0xF000 && opcode << 16 == 0x9000):
+            case ((currentOpcode & 0x0F00) == 0xF029):
                 // FX29 - Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are
                 // represented by a 4x5 font
+                programCounter += 2
+                render = true
                 break
-            case (opcode << 12 == 0xF000 && opcode << 16 == 0x3000):
+            case ((currentOpcode & 0x0F00) == 0xF033):
                 // FX33 - Stores the Binary-coded decimal representation of VX, with the most significant of three digits at
                 // the address in I, the middle digit at I plus 1, and the least significant digit at I plus 2. (In other
                 // words, take the decimal representation of VX, place the hundreds digit in memory at location in I, the tens
                 // digit at location I+1, and the ones digit at location I+2.)
-                memory[indexRegister] = vRegister[(opcode & 0x0F00) >> 8] / 100
-                memory[indexRegister + 1] = (vRegister[(opcode & 0x0F00) >> 8] / 10) % 10
-                memory[indexRegister + 2] = (vRegister[(opcode & 0x0F00) >> 8] % 100) % 10
+                memory[indexRegister] = vRegister[(currentOpcode & 0x0F00) >> 8] / 100
+                memory[indexRegister + 1] = (vRegister[(currentOpcode & 0x0F00) >> 8] / 10) % 10
+                memory[indexRegister + 2] = (vRegister[(currentOpcode & 0x0F00) >> 8] % 100) % 10
                 programCounter += 2
                 break
-            case (opcode << 12 == 0xF000 && opcode << 8 == 0x5500):
+            case ((currentOpcode & 0x0F00) == 0xF055):
                 // FX55 - Stores V0 to VX in memory starting at address I
-                def x = vRegister[(opcode & 0x0F00) >> 8]
+                def x = vRegister[(currentOpcode & 0x0F00) >> 8]
                 for (offset in 0..x) {
                     memory[indexRegister + offset] = vRegister[offset]
                 }
                 programCounter += 2
                 break
-            case (opcode << 12 == 0xF000 && opcode << 8 == 0x6500):
+            case ((currentOpcode & 0x0F00) == 0xF065):
                 // FX65 - Fills V0 to VX with values from memory starting at address I
-                def x = vRegister[(opcode & 0x0F00) >> 8]
+                def x = vRegister[(currentOpcode & 0x0F00) >> 8]
                 for (offset in 0..x) {
                     vRegister[offset] = memory[indexRegister + offset]
                 }
                 programCounter += 2
                 break
             default:
-                throw new AssertionError("Unknown opcode: ${opcode}")
+                throw new AssertionError("Unknown currentOpcode: ${currentOpcode}")
         }
 
         if (delayTimer > 0) {
@@ -281,7 +288,7 @@ class CPU {
             soundTimer--
         }
 
-        if (true) {
+        if (render) {
             renderCallback.call()
         }
     }
