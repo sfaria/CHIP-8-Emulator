@@ -6,35 +6,83 @@ package chip8
  */
 class CPU {
 
-    /* Private Members */
-
+    // registers and memory
     def currentOpcode = 0x0000
     def memory = new byte[4096]
     def vRegister = new byte[16]
     def indexRegister = 0x000
     def programCounter = 0x000
+
+    // graphics context
     def graphics = new boolean[64 * 32]
+
+    // timers
     def delayTimer = 0x00
     def soundTimer = 0x00
-    def stack = new short[16]
-    def stackPointer = 0x0000
 
-    /* Public Methods */
+    // stack variables
+    def stack = new short[16]
+    def stackPointer = 0x000
+
+    // 0x0 - 0xF, 16 keys
+    def currentKeyPress = null
+
+    // rng
+    def rng = new Random()
+
+    // system font set
+    def fontset = [
+        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+        0x20, 0x60, 0x20, 0x20, 0x70, // 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+        0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+    ]
 
     def getGraphics() {
         return graphics.clone()
     }
 
     def init() {
+        currentOpcode = 0x0000
+        programCounter = 0x000
+        indexRegister = 0x000
+        stackPointer = 0x000
+        stack = new short[16]
+        memory = new byte[4096]
+        vRegister = new byte[16]
+        graphics = new boolean[64 * 32]
+        delayTimer = 0x00
+        soundTimer = 0x00
 
+        // load the system font set
+        fontset.eachWithIndex { int font, int index ->
+            memory[index] = font
+        }
+
+        delayTimer = 0
+        soundTimer = 0
     }
 
     def loadRom(def romLocation) {
-
+        new File(romLocation as String).readBytes().eachWithIndex { byte instruction, int i ->
+            memory[i + 512] = instruction
+        }
     }
 
     def setKeyPressState() {
-
+       currentKeyPress = null // TODO implement key press
     }
 
     def emulateCycle(Closure renderCallback) {
@@ -49,12 +97,15 @@ class CPU {
                 // 00E0 - Clear the screen
                 graphics = new boolean[64 * 32]
                 programCounter += 2
+                render = true
                 break
             case (0x00EE):
                 // 00EE - Returns from a subroutine
+                programCounter = stack[--stackPointer]
                 break
             case ((currentOpcode & 0x0FFF) == 0x1000):
                 // 1NNN - Jumps to memory address NNN
+                programCounter = currentOpcode & 0x0FFF
                 break
             case ((currentOpcode & 0x0FFF) == 0x2000):
                 // 2NNN - Jumps to subroutine at NNN
@@ -194,9 +245,16 @@ class CPU {
                 break
             case ((currentOpcode & 0x0FFF) == 0xB000):
                 // BNNN - Jumps to the address NNN plus V0
+                programCounter = (currentOpcode & 0x0FFF) + vRegister[0x0]
                 break
             case ((currentOpcode & 0x0FFF) == 0xC000):
                 // CXNN - Sets VX to a random number and NN
+                def x = (currentOpcode & 0x0F00) >> 8
+                def nn = (currentOpcode & 0x00FF)
+                def randomByte = new byte[1]
+                rng.nextBytes(randomByte)
+                vRegister[x] = randomByte[1] & nn
+                programCounter += 2
                 break
             case ((currentOpcode & 0x0FFF) == 0xD000):
                 // DXYN - Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
@@ -214,9 +272,19 @@ class CPU {
                 break
             case ((currentOpcode & 0x0FF0) == 0xE00E):
                 // EX9E - Skips the next instruction if the key stored in VX is pressed
+                def x = (currentOpcode & 0x0F00) >> 8
+                if (vRegister[x] == currentKeyPress) {
+                    programCounter += 2
+                }
+                programCounter += 2
                 break
             case ((currentOpcode & 0x0FF0) == 0xE001):
                 // EXA1 - Skips the next instruction if the key stored in VX isn't pressed
+                def x = (currentOpcode & 0x0F00) >> 8
+                if (vRegister[x] != currentKeyPress) {
+                    programCounter += 2
+                }
+                programCounter += 2
                 break
             case ((currentOpcode & 0x0FF0) == 0xF007):
                 // FX07 - Sets VX to the value of the delay timer
@@ -225,6 +293,10 @@ class CPU {
                 break
             case ((currentOpcode & 0x0FF0) == 0xF00A):
                 // FX0A - A key press is awaited, and then stored in VX
+                setKeyPressState()
+                def x = (currentOpcode & 0x0F00) >> 8
+                vRegister[x] = currentKeyPress
+                programCounter += 2
                 break
             case ((currentOpcode & 0x0F00) == 0xF015):
                 // FX15 - Sets the delay timer to VX
@@ -244,8 +316,8 @@ class CPU {
             case ((currentOpcode & 0x0F00) == 0xF029):
                 // FX29 - Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are
                 // represented by a 4x5 font
+                // TODO implement fully
                 programCounter += 2
-                render = true
                 break
             case ((currentOpcode & 0x0F00) == 0xF033):
                 // FX33 - Stores the Binary-coded decimal representation of VX, with the most significant of three digits at
