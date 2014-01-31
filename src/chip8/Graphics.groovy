@@ -17,7 +17,7 @@ import java.awt.Rectangle
  *
  * @author Scott Faria <scott.faria@gmail.com>
  */
-class View extends JComponent {
+class Graphics extends JComponent {
 
     def graphicsProvider
     def _width = 64
@@ -36,7 +36,7 @@ class View extends JComponent {
     }
 
     @Override
-    def void paintComponent(Graphics g) {
+    def void paintComponent(java.awt.Graphics g) {
         def g2d = (Graphics2D) g
         def graphicsMemory = graphicsProvider.getGraphics()
         def pixel = new Rectangle(0, 0, (int) (getWidth() / _width), (int) (getHeight() / _height))
