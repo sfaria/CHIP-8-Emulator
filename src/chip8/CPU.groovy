@@ -141,15 +141,15 @@ class CPU {
                 break
             case { (currentOpcode & 0xF00F) == 0x8001 }:
                 // 8XY1 - Sets VX to VX or VY
-                vRegister[x] = vRegister[x] | vRegister[y]
+                vRegister[x] |= vRegister[y]
                 break
             case { (currentOpcode & 0xF00F) == 0x8002 }:
                 // 8XY2 - Sets VX to VX and VY
-                vRegister[x] = vRegister[x] & vRegister[y]
+                vRegister[x] &= vRegister[y]
                 break
             case { (currentOpcode & 0xF00F) == 0x8003 }:
                 // 8XY3 - Sets VX to VX xor VY
-                vRegister[x] = vRegister[x] ^ vRegister[y]
+                vRegister[x] ^= vRegister[y]
                 break
             case { (currentOpcode & 0xF00F) == 0x8004 }:
                 // 8XY4 - Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't
@@ -208,7 +208,7 @@ class CPU {
                 // CXNN - Sets VX to a random number and NN
                 def randomByte = new byte[1]
                 rng.nextBytes(randomByte)
-                vRegister[x] = randomByte[0] & currentOpcode & 0x00FF
+                vRegister[x] = randomByte[0] & (currentOpcode & 0x00FF)
                 break
             case { (currentOpcode & 0xF000) == 0xD000 }:
                 // DXYN - Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
@@ -228,7 +228,7 @@ class CPU {
                             if(graphics[index]) {
                                 vRegister[0xF] = 1
                             }
-                            graphics[index] ^= true
+                            graphics[index] = !graphics[index]
                         }
                     }
                 }

@@ -3,8 +3,6 @@ package chip8
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
 import java.awt.BorderLayout
-import java.awt.event.KeyAdapter
-import java.awt.event.KeyEvent
 
 /**
  *
@@ -25,7 +23,7 @@ class CHIP8Emulator {
                 frame.getContentPane().add(view, BorderLayout.CENTER)
                 frame.setVisible(true)
             }
-        })
+        } as Runnable)
         keyboard.attachKeyboard(frame)
         return view
     }
@@ -37,14 +35,17 @@ class CHIP8Emulator {
         cpu.loadRom("roms/PONG")
 
         def view = setupGraphicsSystem(cpu, keyboard)
+        def wait = (long) (1.0f / 60.0f) * 1000
         while (true) {
+            Thread.sleep(wait)
+
             cpu.emulateCycle {
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     void run() {
                         view.repaint()
                     }
-                })
+                } as Runnable)
             }
         }
     }
