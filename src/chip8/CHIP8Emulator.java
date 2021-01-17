@@ -25,18 +25,18 @@ final class CHIP8Emulator {
         return view;
     }
 
-    public static void main(String[] args) throws InterruptedException, IOException {
+    public static void main(String[] args) throws Exception {
         CPU cpu = new CPU();
         Keyboard keyboard = new Keyboard();
         cpu.init(keyboard);
-        cpu.loadRom("roms/PONG");
+        cpu.loadRom("res/c8_test.c8");
 
         Graphics view = setupGraphicsSystem(cpu, keyboard);
-        long wait = (long) (1.0f / 60.0f) * 1000;
+//        long wait = (long) (1.0f / 60.0f) * 1000;
 
         //noinspection InfiniteLoopStatement
         while (true) {
-            Thread.sleep(wait);
+//            Thread.sleep(wait);
             cpu.emulateCycle(() -> {
                 SwingUtilities.invokeLater(view::repaint);
             });
