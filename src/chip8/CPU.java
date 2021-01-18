@@ -12,45 +12,46 @@ import java.util.stream.IntStream;
 final class CPU {
 
     // registers and memory
-    private short currentOpcode = 0x0000;
-    private byte[] memory = new byte[4096];
-    private byte[] vRegister = new byte[16];
-    private short indexRegister = 0x0000;
-    private short programCounter = 0x2000;
-
-    // graphics context
-    private boolean[] graphics = new boolean[64 * 32];
-
-    // timers
-    private byte delayTimer = 0x00;
-    private byte soundTimer = 0x00;
+    private int currentOpcode = 0x0000;                 // two bytes used
+    private short[] memory = new short[4096];           // 1 byte * 4096
+    private short[] vRegister = new short[16];          // two bytes each
+    private short indexRegister = 0x0000;                 // two bytes
+    private short programCounter = 0x2000;                // two bytes
 
     // stack variables
-    private short[] stack = new short[16];
-    private short stackPointer = 0x0000;
+    private short[] stack = new short[16];                  // two bytes each
+    private short stackPointer = 0x0000;                  // two byte pointer into stack
+
+    // graphics "memory"
+    private boolean[] graphics = new boolean[64 * 32];  // matrix of "bits"
+
+    // timers
+    private short delayTimer = 0x0000;                    // 2 bytes
+    private short soundTimer = 0x0000;                    // 2 bytes
+
 
     // rng
     private final Random rng = new Random();
     private Keyboard keyboard = null;
 
     // system font set
-    private final byte[] fontset = new byte[]{
-            (byte) 0xF0, (byte) 0x90, (byte) 0x90, (byte) 0x90, (byte) 0xF0, // 0
-            (byte) 0x20, (byte) 0x60, (byte) 0x20, (byte) 0x20, (byte) 0x70, // 1
-            (byte) 0xF0, (byte) 0x10, (byte) 0xF0, (byte) 0x80, (byte) 0xF0, // 2
-            (byte) 0xF0, (byte) 0x10, (byte) 0xF0, (byte) 0x10, (byte) 0xF0, // 3
-            (byte) 0x90, (byte) 0x90, (byte) 0xF0, (byte) 0x10, (byte) 0x10, // 4
-            (byte) 0xF0, (byte) 0x80, (byte) 0xF0, (byte) 0x10, (byte) 0xF0, // 5
-            (byte) 0xF0, (byte) 0x80, (byte) 0xF0, (byte) 0x90, (byte) 0xF0, // 6
-            (byte) 0xF0, (byte) 0x10, (byte) 0x20, (byte) 0x40, (byte) 0x40, // 7
-            (byte) 0xF0, (byte) 0x90, (byte) 0xF0, (byte) 0x90, (byte) 0xF0, // 8
-            (byte) 0xF0, (byte) 0x90, (byte) 0xF0, (byte) 0x10, (byte) 0xF0, // 9
-            (byte) 0xF0, (byte) 0x90, (byte) 0xF0, (byte) 0x90, (byte) 0x90, // A
-            (byte) 0xE0, (byte) 0x90, (byte) 0xE0, (byte) 0x90, (byte) 0xE0, // B
-            (byte) 0xF0, (byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0xF0, // C
-            (byte) 0xE0, (byte) 0x90, (byte) 0x90, (byte) 0x90, (byte) 0xE0, // D
-            (byte) 0xF0, (byte) 0x80, (byte) 0xF0, (byte) 0x80, (byte) 0xF0, // E
-            (byte) 0xF0, (byte) 0x80, (byte) 0xF0, (byte) 0x80, (byte) 0x80  // F
+    private final short[] fontset = new short[]{
+            0x00F0, 0x0090, 0x0090, 0x0090, 0x00F0, // 0
+            0x0020, 0x0060, 0x0020, 0x0020, 0x0070, // 1
+            0x00F0, 0x0010, 0x00F0, 0x0080, 0x00F0, // 2
+            0x00F0, 0x0010, 0x00F0, 0x0010, 0x00F0, // 3
+            0x0090, 0x0090, 0x00F0, 0x0010, 0x0010, // 4
+            0x00F0, 0x0080, 0x00F0, 0x0010, 0x00F0, // 5
+            0x00F0, 0x0080, 0x00F0, 0x0090, 0x00F0, // 6
+            0x00F0, 0x0010, 0x0020, 0x0040, 0x0040, // 7
+            0x00F0, 0x0090, 0x00F0, 0x0090, 0x00F0, // 8
+            0x00F0, 0x0090, 0x00F0, 0x0010, 0x00F0, // 9
+            0x00F0, 0x0090, 0x00F0, 0x0090, 0x0090, // A
+            0x00E0, 0x0090, 0x00E0, 0x0090, 0x00E0, // B
+            0x00F0, 0x0080, 0x0080, 0x0080, 0x00F0, // C
+            0x00E0, 0x0090, 0x0090, 0x0090, 0x00E0, // D
+            0x00F0, 0x0080, 0x00F0, 0x0080, 0x00F0, // E
+            0x00F0, 0x0080, 0x00F0, 0x0080, 0x0080  // F
     };
 
     final void init(Keyboard keyboard) {
@@ -60,8 +61,8 @@ final class CPU {
         this.indexRegister = 0x000;
         this.stackPointer = 0x000;
         this.stack = new short[16];
-        this.memory = new byte[4096];
-        this.vRegister = new byte[16];
+        this.memory = new short[4096];
+        this.vRegister = new short[16];
         this.graphics = new boolean[64 * 32];
         this.delayTimer = 0x00;
         this.soundTimer = 0x00;
@@ -75,8 +76,11 @@ final class CPU {
 
     final void loadRom(String romLocation) throws IOException {
         File romFile = new File(romLocation);
+        int start = 512;
         byte[] fileBytes = Files.readAllBytes(romFile.toPath());
-        System.arraycopy(fileBytes, 0, memory, 512, fileBytes.length);
+        for (int fileIndex = 0, memIndex = 512; fileIndex < fileBytes.length; fileIndex++, memIndex++) {
+            memory[memIndex] = (short) Byte.toUnsignedInt(fileBytes[fileIndex]);
+        }
     }
 
     final boolean[] getGraphics() {
@@ -88,19 +92,19 @@ final class CPU {
     final void emulateCycle(Runnable renderCallback) {
         boolean render = false;
 
-        byte highByte = memory[programCounter];
-        byte lowByte = memory[programCounter + 1];
-        currentOpcode = (short) ((short) highByte << 8 | (short) lowByte);
-
+        short highByte = memory[programCounter];
+        short lowByte = memory[programCounter + 1];
+        currentOpcode = (short) (highByte << 8 | lowByte);
+        System.out.println("OPCODE: " + String.format("0x%04X", currentOpcode & 0xFFFF));
         short nnn = (short) (currentOpcode & 0x0FFF);
-        byte n = (byte) (currentOpcode & 0x000F);
-        byte x = (byte) (highByte & 0x0F);
-        byte y = (byte) ((lowByte & 0xF0) >> 2);
-        byte nn = lowByte;
+        short n = (short) (currentOpcode & 0x000F);
+        short x = (short) (highByte & 0x000F);
+        short y = (short) ((lowByte & 0xF000) >> 2);
+        short nn = lowByte;
 
         programCounter += 2;
 
-        byte topByte = (byte) ((currentOpcode & 0xF000) >> 12);
+        short topByte = (short) ((currentOpcode & 0xF000) >> 12);
         if (currentOpcode == 0x00E0) {
             // 00E0 - Clear the screen
             graphics = new boolean[64 * 32];
@@ -209,7 +213,7 @@ final class CPU {
             int height = n;
             vRegister[0xF] = 0;
             for (int row = 0; row < height; row++) {
-                byte pixel = memory[indexRegister + row];
+                short pixel = memory[indexRegister + row];
                 for (int col = 0; col < 8; col++) {
                     if ((pixel & (0x80 >> row)) != 0) {
                         int index = x + col + ((y + row) * 64);
