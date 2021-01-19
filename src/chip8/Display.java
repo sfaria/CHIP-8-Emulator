@@ -8,16 +8,22 @@ import java.awt.*;
  *
  * @author Scott Faria <scott.faria@protonmail.com>
  */
-final class Graphics extends JComponent {
+final class Display extends JComponent {
+
+    // -------------------- Private Variables --------------------
 
     private final int width = 64;
     private final int height = 32;
     private final int scaleFactor = 8;
     private final CPU cpu;
 
-    Graphics(CPU cpu) {
+    // -------------------- Constructors --------------------
+
+    Display(CPU cpu) {
         this.cpu = cpu;
     }
+
+    // -------------------- Overridden Methods --------------------
 
     @Override
     public final int getWidth() {

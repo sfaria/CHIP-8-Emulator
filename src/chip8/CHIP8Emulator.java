@@ -1,9 +1,8 @@
 package chip8;
 
-import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 import java.awt.BorderLayout;
-import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  *
@@ -11,17 +10,25 @@ import java.io.IOException;
  */
 final class CHIP8Emulator {
 
-    private static Graphics setupGraphicsSystem(CPU cpu, Keyboard keyboard) {
-        Graphics view = new Graphics(cpu);
+    private static Display setupGraphicsSystem(CPU cpu, Keyboard keyboard) throws InvocationTargetException, InterruptedException {
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        Display view = new Display(cpu);
+        mainPanel.add(view, BorderLayout.CENTER);
+
+        InstructionView instructionView = new InstructionView(cpu);
+        mainPanel.add(instructionView, BorderLayout.EAST);
+
+        RegisterView registerView = new RegisterView(cpu);
+        mainPanel.add(registerView, BorderLayout.SOUTH);
+
         JFrame frame = new JFrame("CHIP8 Emulator");
-        SwingUtilities.invokeLater(() -> {
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setSize(view.getWidth(), view.getHeight());
-            frame.getContentPane().setLayout(new BorderLayout());
-            frame.getContentPane().add(view, BorderLayout.CENTER);
-            frame.setVisible(true);
-        });
-        keyboard.attachKeyboard(frame);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(800, 600);
+        frame.getContentPane().setLayout(new BorderLayout());
+        frame.getContentPane().add(mainPanel, BorderLayout.CENTER);
+        frame.pack();
+        frame.setVisible(true);
+
         return view;
     }
 
@@ -31,7 +38,7 @@ final class CHIP8Emulator {
         cpu.init(keyboard);
         cpu.loadRom("res/c8_test.c8");
 
-        Graphics view = setupGraphicsSystem(cpu, keyboard);
+        Display view = setupGraphicsSystem(cpu, keyboard);
 //        long wait = (long) (1.0f / 60.0f) * 1000;
 
         //noinspection InfiniteLoopStatement

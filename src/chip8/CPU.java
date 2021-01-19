@@ -1,8 +1,10 @@
 package chip8;
 
+import javax.swing.event.EventListenerList;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Objects;
 import java.util.Random;
 import java.util.stream.IntStream;
 
@@ -10,6 +12,30 @@ import java.util.stream.IntStream;
  * @author Scott Faria <scott.faria@protonmail.com>
  */
 final class CPU {
+
+    // -------------------- Private Statics --------------------
+
+    // system font set
+    private static final short[] FONT_SET = new short[] {
+            0x00F0, 0x0090, 0x0090, 0x0090, 0x00F0, // 0
+            0x0020, 0x0060, 0x0020, 0x0020, 0x0070, // 1
+            0x00F0, 0x0010, 0x00F0, 0x0080, 0x00F0, // 2
+            0x00F0, 0x0010, 0x00F0, 0x0010, 0x00F0, // 3
+            0x0090, 0x0090, 0x00F0, 0x0010, 0x0010, // 4
+            0x00F0, 0x0080, 0x00F0, 0x0010, 0x00F0, // 5
+            0x00F0, 0x0080, 0x00F0, 0x0090, 0x00F0, // 6
+            0x00F0, 0x0010, 0x0020, 0x0040, 0x0040, // 7
+            0x00F0, 0x0090, 0x00F0, 0x0090, 0x00F0, // 8
+            0x00F0, 0x0090, 0x00F0, 0x0010, 0x00F0, // 9
+            0x00F0, 0x0090, 0x00F0, 0x0090, 0x0090, // A
+            0x00E0, 0x0090, 0x00E0, 0x0090, 0x00E0, // B
+            0x00F0, 0x0080, 0x0080, 0x0080, 0x00F0, // C
+            0x00E0, 0x0090, 0x0090, 0x0090, 0x00E0, // D
+            0x00F0, 0x0080, 0x00F0, 0x0080, 0x00F0, // E
+            0x00F0, 0x0080, 0x00F0, 0x0080, 0x0080  // F
+    };
+
+    // -------------------- Private Methods --------------------
 
     // registers and memory
     private int currentOpcode = 0x0000;                 // two bytes used
@@ -29,30 +55,28 @@ final class CPU {
     private short delayTimer = 0x0000;                    // 2 bytes
     private short soundTimer = 0x0000;                    // 2 bytes
 
-
     // rng
     private final Random rng = new Random();
     private Keyboard keyboard = null;
 
-    // system font set
-    private final short[] fontset = new short[]{
-            0x00F0, 0x0090, 0x0090, 0x0090, 0x00F0, // 0
-            0x0020, 0x0060, 0x0020, 0x0020, 0x0070, // 1
-            0x00F0, 0x0010, 0x00F0, 0x0080, 0x00F0, // 2
-            0x00F0, 0x0010, 0x00F0, 0x0010, 0x00F0, // 3
-            0x0090, 0x0090, 0x00F0, 0x0010, 0x0010, // 4
-            0x00F0, 0x0080, 0x00F0, 0x0010, 0x00F0, // 5
-            0x00F0, 0x0080, 0x00F0, 0x0090, 0x00F0, // 6
-            0x00F0, 0x0010, 0x0020, 0x0040, 0x0040, // 7
-            0x00F0, 0x0090, 0x00F0, 0x0090, 0x00F0, // 8
-            0x00F0, 0x0090, 0x00F0, 0x0010, 0x00F0, // 9
-            0x00F0, 0x0090, 0x00F0, 0x0090, 0x0090, // A
-            0x00E0, 0x0090, 0x00E0, 0x0090, 0x00E0, // B
-            0x00F0, 0x0080, 0x0080, 0x0080, 0x00F0, // C
-            0x00E0, 0x0090, 0x0090, 0x0090, 0x00E0, // D
-            0x00F0, 0x0080, 0x00F0, 0x0080, 0x00F0, // E
-            0x00F0, 0x0080, 0x00F0, 0x0080, 0x0080  // F
-    };
+    // general stuff
+    private final EventListenerList ll = new EventListenerList();
+
+    // -------------------- Constructors --------------------
+
+    CPU() { }
+
+    // -------------------- Default Methods --------------------
+
+    final void addDebuggerListener(DebuggerListener l) {
+        Objects.requireNonNull(l);
+        ll.add(DebuggerListener.class, l);
+    }
+
+    final void removeDebuggerListener(DebuggerListener l) {
+        Objects.requireNonNull(l);
+        ll.remove(DebuggerListener.class, l);
+    }
 
     final void init(Keyboard keyboard) {
         this.keyboard = keyboard;
@@ -66,12 +90,12 @@ final class CPU {
         this.graphics = new boolean[64 * 32];
         this.delayTimer = 0x00;
         this.soundTimer = 0x00;
-        this.delayTimer = 0;
-        this.soundTimer = 0;
+        this.delayTimer = 0x0000;
+        this.soundTimer = 0x0000;
 
         // load the system font set
-        IntStream.range(0, fontset.length)
-                .forEach(index -> this.memory[index] = fontset[index]);
+        IntStream.range(0, FONT_SET.length)
+                .forEach(index -> this.memory[index] = FONT_SET[index]);
     }
 
     final void loadRom(String romLocation) throws IOException {
