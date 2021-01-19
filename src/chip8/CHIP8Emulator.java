@@ -10,9 +10,17 @@ import java.lang.reflect.InvocationTargetException;
  */
 final class CHIP8Emulator {
 
+    // -------------------- Static Init --------------------
+
+    static {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ClassNotFoundException | UnsupportedLookAndFeelException | IllegalAccessException | InstantiationException ignored) {}
+    }
+
     // -------------------- Private Static Methods --------------------
 
-    private static void setupGraphicsSystem(CPU cpu, Keyboard keyboard) {
+    private static void setupGraphicsSystem(CPU cpu, Keyboard keyboard, Breakpointer breakpointer) {
         assert !SwingUtilities.isEventDispatchThread();
         JPanel mainPanel = new JPanel(new BorderLayout());
 
@@ -24,7 +32,7 @@ final class CHIP8Emulator {
         displayPanel.add(registerView, BorderLayout.SOUTH);
         mainPanel.add(displayPanel, BorderLayout.CENTER);
 
-        InstructionView instructionView = new InstructionView(cpu);
+        InstructionView instructionView = new InstructionView(cpu, breakpointer);
         mainPanel.add(instructionView, BorderLayout.EAST);
 
         JFrame frame = new JFrame("CHIP8 Emulator");
@@ -44,14 +52,16 @@ final class CHIP8Emulator {
         Keyboard keyboard = new Keyboard();
         cpu.init(keyboard);
 
-        SwingUtilities.invokeAndWait(() -> setupGraphicsSystem(cpu, keyboard));
+        boolean startWaiting = true;
+        Breakpointer breakpointer = new Breakpointer(startWaiting);
+        SwingUtilities.invokeAndWait(() -> setupGraphicsSystem(cpu, keyboard, breakpointer));
 
         cpu.loadRom("res/c8_test.c8");
         long wait = 1000;
 
         //noinspection InfiniteLoopStatement
         while (true) {
-            Thread.sleep(wait);
+            breakpointer.waitUntilStepOver();
             cpu.emulateCycle();
         }
     }

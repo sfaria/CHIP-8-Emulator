@@ -2,10 +2,13 @@ package chip8;
 
 import javax.swing.*;
 import javax.swing.border.EtchedBorder;
-import javax.swing.border.LineBorder;
 import java.awt.*;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static javax.swing.ScrollPaneConstants.*;
 
@@ -14,15 +17,35 @@ import static javax.swing.ScrollPaneConstants.*;
  */
 final class InstructionView extends JComponent {
 
+    // -------------------- Private Variables --------------------
+
+    private final Executor ex = Executors.newSingleThreadExecutor();
+
     // -------------------- Constructors --------------------
 
-    InstructionView(CPU cpu) {
+    InstructionView(CPU cpu, Breakpointer breakpointer) {
         Objects.requireNonNull(cpu);
+
         JList<OperationInfo> operationList = new JList<>();
         operationList.setCellRenderer(new Renderer());
 
+        boolean startWaiting = breakpointer.isWaiting();
+        JButton playButton = new JButton(new ImageIcon("res/play.png"));
+        playButton.addActionListener(e -> ex.execute(breakpointer::endWait));
+
+        JCheckBox waitBox = new JCheckBox("Enable Breakpoint", startWaiting);
+        waitBox.addItemListener(e -> {
+            boolean doWait = e.getStateChange() == ItemEvent.SELECTED;
+            ex.execute(() -> breakpointer.setShouldWait(doWait));
+        });
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        buttonPanel.add(playButton);
+        buttonPanel.add(waitBox);
+
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(300, 520));
+        add(buttonPanel, BorderLayout.NORTH);
         add(new JScrollPane(operationList, VERTICAL_SCROLLBAR_AS_NEEDED, HORIZONTAL_SCROLLBAR_NEVER), BorderLayout.CENTER);
         setBorder(new EtchedBorder());
 
@@ -57,8 +80,8 @@ final class InstructionView extends JComponent {
             int initialProgramCounter = currentState.getProgramCounter();
             ListModel model = new ListModel(initialProgramCounter, operations);
             list.setModel(model);
-            list.setSelectedIndex(initialProgramCounter);
-            list.ensureIndexIsVisible(initialProgramCounter);
+            list.setSelectedIndex(0);
+            list.ensureIndexIsVisible(0);
         });
     }
 
