@@ -1,16 +1,17 @@
 package chip8;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.EtchedBorder;
 import java.awt.*;
 import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import static javax.swing.ScrollPaneConstants.*;
+import static javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER;
+import static javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED;
 
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
@@ -47,8 +48,7 @@ final class InstructionView extends JComponent {
         setPreferredSize(new Dimension(300, 520));
         add(buttonPanel, BorderLayout.NORTH);
         add(new JScrollPane(operationList, VERTICAL_SCROLLBAR_AS_NEEDED, HORIZONTAL_SCROLLBAR_NEVER), BorderLayout.CENTER);
-        setBorder(new EtchedBorder());
-
+        setBorder(new EmptyBorder(4, 4, 4, 4));
         cpu.addDebuggerListener(new DebuggerListener() {
             @Override
             public void executionStarted(MachineState currentState, List<OperationInfo> operations) {
@@ -69,7 +69,7 @@ final class InstructionView extends JComponent {
             ListModel model = (ListModel) operationList.getModel();
             int initialProgramCounter = model.getInitialProgramCounter();
             int programCounter = currentState.getProgramCounter();
-            int index = programCounter - initialProgramCounter;
+            int index = Math.max(0, (programCounter - initialProgramCounter) / 2);
             operationList.setSelectedIndex(index);
             operationList.ensureIndexIsVisible(index);
         });
@@ -80,7 +80,7 @@ final class InstructionView extends JComponent {
             int initialProgramCounter = currentState.getProgramCounter();
             ListModel model = new ListModel(initialProgramCounter, operations);
             list.setModel(model);
-            list.setSelectedIndex(0);
+            list.setSelectedIndex(-1);
             list.ensureIndexIsVisible(0);
         });
     }
@@ -116,9 +116,17 @@ final class InstructionView extends JComponent {
         @Override
         public final Component getListCellRendererComponent(JList<? extends OperationInfo> list, OperationInfo value, int index, boolean isSelected, boolean cellHasFocus) {
             ListModel model = (ListModel) list.getModel();
-            int adjustedIndex = model.getInitialProgramCounter() + index; // this is our "memory" index to render, which isn't the first index into system mem
+            boolean even = index % 2 == 0;
+            if (even) {
+                setBackground(Color.WHITE);
+            } else {
+                setBackground(Color.LIGHT_GRAY);
+            }
+
+            // this is our "memory" index to render, which isn't the first index into system mem
+            int adjustedIndex = model.getInitialProgramCounter() + index;
             String memoryIndex = Utilities.toHex(adjustedIndex);
-            String deco = isSelected ? "* " : "";
+            String deco = isSelected ? "* " : "  ";
             setText(deco + memoryIndex + ": " + value.asHexString());
             return this;
         }

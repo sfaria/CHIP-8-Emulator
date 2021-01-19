@@ -107,7 +107,7 @@ final class CPU {
     }
 
     final void emulateCycle() {
-        fireStartExecute();
+        fireExecuteStateChanged();
 
         boolean render = false;
 
@@ -119,8 +119,6 @@ final class CPU {
         short x = (short) (highByte & 0x000F);
         short y = (short) ((lowByte & 0xF000) >> 2);
         short nn = lowByte;
-
-        programCounter += 2;
 
         short topByte = (short) ((currentOpcode & 0xF000) >> 12);
         if (currentOpcode == 0x00E0) {
@@ -301,6 +299,8 @@ final class CPU {
             soundTimer--;
         }
 
+        programCounter += 2;
+
         if (render) {
             fireRenderNeeded();
         }
@@ -325,7 +325,7 @@ final class CPU {
         }
     }
 
-    private void fireStartExecute() {
+    private void fireExecuteStateChanged() {
         short[] registerCopy = new short[vRegister.length];
         System.arraycopy(vRegister, 0, registerCopy, 0, vRegister.length);
         MachineState state = new MachineState(programCounter, registerCopy);

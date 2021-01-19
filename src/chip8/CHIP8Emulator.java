@@ -1,6 +1,7 @@
 package chip8;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.lang.reflect.InvocationTargetException;
 
@@ -26,7 +27,11 @@ final class CHIP8Emulator {
 
         JPanel displayPanel = new JPanel(new BorderLayout());
         Display view = new Display(cpu);
-        displayPanel.add(view, BorderLayout.CENTER);
+
+        JPanel displayBorder = new JPanel();
+        displayBorder.setBorder(new EmptyBorder(4, 4, 4, 0));
+        displayBorder.add(view);
+        displayPanel.add(displayBorder, BorderLayout.CENTER);
 
         RegisterView registerView = new RegisterView(cpu);
         displayPanel.add(registerView, BorderLayout.SOUTH);
