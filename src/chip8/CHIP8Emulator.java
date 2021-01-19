@@ -64,10 +64,11 @@ final class CHIP8Emulator {
         cpu.loadRom("res/c8_test.c8");
         long wait = 1000;
 
+        breakpointer.waitUntilStepOver();
         //noinspection InfiniteLoopStatement
         while (true) {
-            breakpointer.waitUntilStepOver();
             cpu.emulateCycle();
+            breakpointer.waitUntilStepOver();
         }
     }
 }

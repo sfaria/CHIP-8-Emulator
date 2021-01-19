@@ -75,7 +75,7 @@ final class Keyboard {
         }
     }
 
-    final boolean getKeyPressState(int key) {
+    final boolean isPressed(int key) {
         synchronized (mutex) {
             return keys[key];
         }
