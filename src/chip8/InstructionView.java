@@ -1,6 +1,8 @@
 package chip8;
 
 import javax.swing.*;
+import javax.swing.border.EtchedBorder;
+import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.util.List;
 import java.util.Objects;
@@ -24,7 +26,9 @@ final class InstructionView extends JComponent {
         operationList.setCellRenderer(new Renderer());
         operationList.setSelectionModel(new SelectionModel());
         setLayout(new BorderLayout());
+        setPreferredSize(new Dimension(300, 520));
         add(operationList, BorderLayout.CENTER);
+        setBorder(new EtchedBorder());
 
         cpu.addDebuggerListener(new DebuggerListener() {
             @Override

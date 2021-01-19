@@ -14,26 +14,19 @@ final class Display extends JComponent {
 
     private final int width = 64;
     private final int height = 32;
-    private final int scaleFactor = 8;
+    private final int scaleFactor = 10;
     private final CPU cpu;
 
     // -------------------- Constructors --------------------
 
     Display(CPU cpu) {
         this.cpu = cpu;
+        Dimension size = new Dimension(width * scaleFactor, height * scaleFactor);
+        setPreferredSize(size);
+        setMinimumSize(size);
     }
 
     // -------------------- Overridden Methods --------------------
-
-    @Override
-    public final int getWidth() {
-        return width * scaleFactor;
-    }
-
-    @Override
-    public final int getHeight() {
-        return height * scaleFactor;
-    }
 
     @Override
     protected final void paintComponent(java.awt.Graphics g) {

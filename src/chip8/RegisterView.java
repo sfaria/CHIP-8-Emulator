@@ -1,6 +1,9 @@
 package chip8;
 
+import javax.sound.sampled.Line;
 import javax.swing.*;
+import javax.swing.border.EtchedBorder;
+import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -23,7 +26,8 @@ final class RegisterView extends JComponent {
     RegisterView(CPU cpu) {
         Objects.requireNonNull(cpu);
         setLayout(new BorderLayout());
-
+        setBorder(new EtchedBorder());
+        setPreferredSize(new Dimension(640, 200));
         JPanel registerPanel = new JPanel(new GridLayout(8, 2));
         for (int registerIndex = 0; registerIndex < MachineState.REGISTER_COUNT; registerIndex++) {
             final int index = registerIndex;

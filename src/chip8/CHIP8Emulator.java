@@ -12,20 +12,24 @@ final class CHIP8Emulator {
 
     private static Display setupGraphicsSystem(CPU cpu, Keyboard keyboard) throws InvocationTargetException, InterruptedException {
         JPanel mainPanel = new JPanel(new BorderLayout());
+
+        JPanel displayPanel = new JPanel(new BorderLayout());
         Display view = new Display(cpu);
-        mainPanel.add(view, BorderLayout.CENTER);
+        displayPanel.add(view, BorderLayout.CENTER);
+
+        RegisterView registerView = new RegisterView(cpu);
+        displayPanel.add(registerView, BorderLayout.SOUTH);
+        mainPanel.add(displayPanel, BorderLayout.CENTER);
 
         InstructionView instructionView = new InstructionView(cpu);
         mainPanel.add(instructionView, BorderLayout.EAST);
 
-        RegisterView registerView = new RegisterView(cpu);
-        mainPanel.add(registerView, BorderLayout.SOUTH);
-
         JFrame frame = new JFrame("CHIP8 Emulator");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(800, 600);
+        frame.setSize(1024, 520);
         frame.getContentPane().setLayout(new BorderLayout());
         frame.getContentPane().add(mainPanel, BorderLayout.CENTER);
+        frame.setResizable(false);
         frame.pack();
         frame.setVisible(true);
 
