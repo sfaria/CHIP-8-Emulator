@@ -10,7 +10,10 @@ import java.lang.reflect.InvocationTargetException;
  */
 final class CHIP8Emulator {
 
-    private static Display setupGraphicsSystem(CPU cpu, Keyboard keyboard) throws InvocationTargetException, InterruptedException {
+    // -------------------- Private Static Methods --------------------
+
+    private static void setupGraphicsSystem(CPU cpu, Keyboard keyboard) {
+        assert !SwingUtilities.isEventDispatchThread();
         JPanel mainPanel = new JPanel(new BorderLayout());
 
         JPanel displayPanel = new JPanel(new BorderLayout());
@@ -32,25 +35,24 @@ final class CHIP8Emulator {
         frame.setResizable(false);
         frame.pack();
         frame.setVisible(true);
-
-        return view;
     }
+
+    // -------------------- Main Method --------------------
 
     public static void main(String[] args) throws Exception {
         CPU cpu = new CPU();
         Keyboard keyboard = new Keyboard();
         cpu.init(keyboard);
-        cpu.loadRom("res/c8_test.c8");
 
-        Display view = setupGraphicsSystem(cpu, keyboard);
-//        long wait = (long) (1.0f / 60.0f) * 1000;
+        SwingUtilities.invokeAndWait(() -> setupGraphicsSystem(cpu, keyboard));
+
+        cpu.loadRom("res/c8_test.c8");
+        long wait = 1000;
 
         //noinspection InfiniteLoopStatement
         while (true) {
-//            Thread.sleep(wait);
-            cpu.emulateCycle(() -> {
-                SwingUtilities.invokeLater(view::repaint);
-            });
+            Thread.sleep(wait);
+            cpu.emulateCycle();
         }
     }
 }

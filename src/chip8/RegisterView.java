@@ -17,10 +17,6 @@ import java.util.function.Supplier;
  */
 final class RegisterView extends JComponent {
 
-    // -------------------- Private Variables --------------------
-
-    private MachineState currentState;
-
     // -------------------- Constructors --------------------
 
     RegisterView(CPU cpu) {
@@ -33,7 +29,7 @@ final class RegisterView extends JComponent {
             final int index = registerIndex;
             JLabel label = new JLabel("v[" + index + "]: ");
             registerPanel.add(label);
-            RegisterRenderer renderer = new RegisterRenderer(this, (state) -> Utilities.toHex(currentState.getRegisterAt(index)));
+            RegisterRenderer renderer = new RegisterRenderer(this, (state) -> Utilities.toHex(state.getRegisterAt(index)));
             label.setLabelFor(renderer);
             registerPanel.add(renderer);
         }
@@ -55,11 +51,7 @@ final class RegisterView extends JComponent {
     // -------------------- Private Methods --------------------
 
     private void fireStateChanged(MachineState currentState) {
-        SwingUtilities.invokeLater(() -> {
-            firePropertyChange("machineStateChanged", this.currentState, currentState);
-            this.currentState = currentState;
-            repaint();
-        });
+        SwingUtilities.invokeLater(() -> firePropertyChange("machineStateChanged", null, currentState));
     }
 
     private static final class RegisterRenderer extends JLabel {

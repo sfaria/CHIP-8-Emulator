@@ -4,8 +4,7 @@ import javax.swing.event.EventListenerList;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.IntStream;
 
 /**
@@ -73,9 +72,9 @@ final class CPU {
         ll.add(DebuggerListener.class, l);
     }
 
-    final void removeDebuggerListener(DebuggerListener l) {
+    final void addRenderListener(RenderListener l) {
         Objects.requireNonNull(l);
-        ll.remove(DebuggerListener.class, l);
+        ll.add(RenderListener.class, l);
     }
 
     final void init(Keyboard keyboard) {
@@ -100,26 +99,21 @@ final class CPU {
 
     final void loadRom(String romLocation) throws IOException {
         File romFile = new File(romLocation);
-        int start = 512;
         byte[] fileBytes = Files.readAllBytes(romFile.toPath());
         for (int fileIndex = 0, memIndex = 512; fileIndex < fileBytes.length; fileIndex++, memIndex++) {
             memory[memIndex] = (short) Byte.toUnsignedInt(fileBytes[fileIndex]);
         }
+        fireInit();
     }
 
-    final boolean[] getGraphics() {
-        boolean[] graphicsMemory = new boolean[graphics.length];
-        System.arraycopy(graphics, 0, graphicsMemory, 0, graphicsMemory.length);
-        return graphicsMemory;
-    }
+    final void emulateCycle() {
+        fireStartExecute();
 
-    final void emulateCycle(Runnable renderCallback) {
         boolean render = false;
 
         short highByte = memory[programCounter];
         short lowByte = memory[programCounter + 1];
         currentOpcode = (short) (highByte << 8 | lowByte);
-        System.out.println("OPCODE: " + String.format("0x%04X", currentOpcode & 0xFFFF));
         short nnn = (short) (currentOpcode & 0x0FFF);
         short n = (short) (currentOpcode & 0x000F);
         short x = (short) (highByte & 0x000F);
@@ -308,8 +302,43 @@ final class CPU {
         }
 
         if (render) {
-            renderCallback.run();
+            fireRenderNeeded();
         }
     }
 
+    // -------------------- Private Methods --------------------
+
+    private void fireInit() {
+        List<OperationInfo> operations = new ArrayList<>();
+        for (int memIndex = programCounter; memIndex < memory.length; memIndex = memIndex + 2) {
+            short highByte = memory[memIndex];
+            short lowByte = memory[memIndex + 1];
+            short opcode = (short) (highByte << 8 | lowByte);
+            operations.add(new OperationInfo(opcode));
+        }
+
+        short[] registerCopy = new short[vRegister.length];
+        System.arraycopy(vRegister, 0, registerCopy, 0, vRegister.length);
+        MachineState state = new MachineState(programCounter, registerCopy);
+        for (DebuggerListener l : ll.getListeners(DebuggerListener.class)) {
+            l.executionStarted(state, operations);
+        }
+    }
+
+    private void fireStartExecute() {
+        short[] registerCopy = new short[vRegister.length];
+        System.arraycopy(vRegister, 0, registerCopy, 0, vRegister.length);
+        MachineState state = new MachineState(programCounter, registerCopy);
+        for (DebuggerListener l : ll.getListeners(DebuggerListener.class)) {
+            l.machineStateChanged(state);
+        }
+    }
+
+    private void fireRenderNeeded() {
+        boolean[] graphicsCopy = new boolean[graphics.length];
+        System.arraycopy(graphics, 0, graphicsCopy, 0, graphics.length);
+        for (RenderListener l : ll.getListeners(RenderListener.class)) {
+            l.render(graphicsCopy);
+        }
+    }
 }

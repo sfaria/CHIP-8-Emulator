@@ -3,6 +3,9 @@ package chip8;
 
 import javax.swing.*;
 import java.awt.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 
 /**
  *
@@ -15,15 +18,22 @@ final class Display extends JComponent {
     private final int width = 64;
     private final int height = 32;
     private final int scaleFactor = 10;
-    private final CPU cpu;
+    private final boolean[] memory = new boolean[width * height];
 
     // -------------------- Constructors --------------------
 
     Display(CPU cpu) {
-        this.cpu = cpu;
-        Dimension size = new Dimension(width * scaleFactor, height * scaleFactor);
-        setPreferredSize(size);
-        setMinimumSize(size);
+        Arrays.fill(memory, false);
+        cpu.addRenderListener(graphicsMemory -> {
+            System.arraycopy(graphicsMemory, 0, memory, 0, graphicsMemory.length);
+            try {
+                SwingUtilities.invokeAndWait(this::repaint);
+            } catch (InterruptedException | InvocationTargetException e) {
+                throw new RuntimeException("Failed to render.", e);
+            }
+        });
+        setPreferredSize(new Dimension(width * scaleFactor, height * scaleFactor));
+        setMinimumSize(new Dimension(width * scaleFactor, height * scaleFactor));
     }
 
     // -------------------- Overridden Methods --------------------
@@ -31,13 +41,12 @@ final class Display extends JComponent {
     @Override
     protected final void paintComponent(java.awt.Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
-        boolean[] graphicsMemory = cpu.getGraphics();
         Rectangle pixel = new Rectangle(0, 0, getWidth() / width, getHeight() / height);
 
         int currentPixel = 0;
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                Color color = graphicsMemory[currentPixel++] ? Color.WHITE : Color.BLACK;
+                Color color = memory[currentPixel++] ? Color.WHITE : Color.BLACK;
                 Color _color = g2d.getColor();
                 try {
                     g2d.setColor(color);

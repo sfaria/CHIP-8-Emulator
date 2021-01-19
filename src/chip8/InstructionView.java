@@ -7,70 +7,72 @@ import java.awt.*;
 import java.util.List;
 import java.util.Objects;
 
+import static javax.swing.ScrollPaneConstants.*;
+
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
  */
 final class InstructionView extends JComponent {
 
-    // -------------------- Private Variables --------------------
-
-    private int initialProgramCounter = 0;
-    private int currentProgramCounter = 0;
-    private List<OperationInfo> operations = List.of();
-
     // -------------------- Constructors --------------------
 
     InstructionView(CPU cpu) {
         Objects.requireNonNull(cpu);
-        JList<OperationInfo> operationList = new JList<>(new ListModel());
+        JList<OperationInfo> operationList = new JList<>();
         operationList.setCellRenderer(new Renderer());
-        operationList.setSelectionModel(new SelectionModel());
+
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(300, 520));
-        add(operationList, BorderLayout.CENTER);
+        add(new JScrollPane(operationList, VERTICAL_SCROLLBAR_AS_NEEDED, HORIZONTAL_SCROLLBAR_NEVER), BorderLayout.CENTER);
         setBorder(new EtchedBorder());
 
         cpu.addDebuggerListener(new DebuggerListener() {
             @Override
             public void executionStarted(MachineState currentState, List<OperationInfo> operations) {
-                fireExecutionStarted(currentState, operations);
+                fireExecutionStarted(operationList, currentState, operations);
             }
 
             @Override
             public void machineStateChanged(MachineState currentState) {
-                fireMachineStateChanged(currentState);
+                fireMachineStateChanged(operationList, currentState);
             }
         });
     }
 
     // -------------------- Private Methods --------------------
 
-    private void fireMachineStateChanged(MachineState currentState) {
+    private void fireMachineStateChanged(JList<OperationInfo> operationList, MachineState currentState) {
         SwingUtilities.invokeLater(() -> {
-            this.currentProgramCounter = currentState.getProgramCounter();
-            repaint();
+            ListModel model = (ListModel) operationList.getModel();
+            int initialProgramCounter = model.getInitialProgramCounter();
+            int programCounter = currentState.getProgramCounter();
+            int index = programCounter - initialProgramCounter;
+            operationList.setSelectedIndex(index);
+            operationList.ensureIndexIsVisible(index);
         });
     }
 
-    private void fireExecutionStarted(MachineState currentState, List<OperationInfo> operations) {
+    private void fireExecutionStarted(JList<OperationInfo> list, MachineState currentState, List<OperationInfo> operations) {
         SwingUtilities.invokeLater(() -> {
-            this.initialProgramCounter = currentState.getProgramCounter();
-            this.currentProgramCounter = currentState.getProgramCounter();
-            this.operations = List.copyOf(operations);
-            repaint();
+            int initialProgramCounter = currentState.getProgramCounter();
+            ListModel model = new ListModel(initialProgramCounter, operations);
+            list.setModel(model);
+            list.setSelectedIndex(initialProgramCounter);
+            list.ensureIndexIsVisible(initialProgramCounter);
         });
     }
 
     // -------------------- Inner Classes --------------------
 
-    private class SelectionModel extends DefaultListSelectionModel {
-        @Override
-        public final boolean isSelectedIndex(int index) {
-            return index == (currentProgramCounter - initialProgramCounter);
-        }
-    }
+    private static class ListModel extends AbstractListModel<OperationInfo> {
+        private final int initialProgramCounter;
+        private final List<OperationInfo> operations;
 
-    private final class ListModel extends AbstractListModel<OperationInfo> {
+        private ListModel(int initialProgramCounter, List<OperationInfo> operations) {
+            this.initialProgramCounter = initialProgramCounter;
+            this.operations = operations;
+        }
+
         @Override
         public final int getSize() {
             return operations.size();
@@ -80,15 +82,21 @@ final class InstructionView extends JComponent {
         public final OperationInfo getElementAt(int index) {
             return operations.get(index);
         }
+
+        private int getInitialProgramCounter() {
+            return initialProgramCounter;
+        }
+
     }
 
-    private class Renderer extends JLabel implements ListCellRenderer<OperationInfo> {
+    private static class Renderer extends JLabel implements ListCellRenderer<OperationInfo> {
         @Override
         public final Component getListCellRendererComponent(JList<? extends OperationInfo> list, OperationInfo value, int index, boolean isSelected, boolean cellHasFocus) {
-            int adjustedIndex = initialProgramCounter + index; // this is our "memory" index to render, which isn't the first index into system mem
+            ListModel model = (ListModel) list.getModel();
+            int adjustedIndex = model.getInitialProgramCounter() + index; // this is our "memory" index to render, which isn't the first index into system mem
             String memoryIndex = Utilities.toHex(adjustedIndex);
             String deco = isSelected ? "* " : "";
-            setToolTipText(deco + memoryIndex + ": " + value.asHexString());
+            setText(deco + memoryIndex + ": " + value.asHexString());
             return this;
         }
     }
