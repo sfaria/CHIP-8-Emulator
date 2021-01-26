@@ -1,6 +1,5 @@
 package chip8;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -26,6 +25,25 @@ final class Breakpointer {
 
     // -------------------- Default Methods --------------------
 
+    final void endWait() {
+        lock.lock();
+        try {
+            this.isWaiting = false;
+            condition.signalAll();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    final void setShouldWait(boolean shouldWait) {
+        lock.lock();
+        try {
+            this.wait = shouldWait;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     final boolean isWaiting() {
         lock.lock();
         try {
@@ -48,25 +66,6 @@ final class Breakpointer {
                     condition.await();
                 } catch (InterruptedException ignore) {}
             }
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    final void endWait() {
-        lock.lock();
-        try {
-            this.isWaiting = false;
-            condition.signalAll();
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    final void setShouldWait(boolean shouldWait) {
-        lock.lock();
-        try {
-            this.wait = shouldWait;
         } finally {
             lock.unlock();
         }

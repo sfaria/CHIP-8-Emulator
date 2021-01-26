@@ -3,7 +3,6 @@ package chip8;
 
 import javax.swing.*;
 import java.awt.*;
-import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
@@ -18,16 +17,18 @@ final class Display extends JComponent {
     private final int width = 64;
     private final int height = 32;
     private final int scaleFactor = 10;
-    private final boolean[] memory = new boolean[width * height];
+
+    private boolean[][] memory = new boolean[height][width];
 
     // -------------------- Constructors --------------------
 
     Display(CPU cpu) {
-        Arrays.fill(memory, false);
         cpu.addRenderListener(graphicsMemory -> {
-            System.arraycopy(graphicsMemory, 0, memory, 0, graphicsMemory.length);
             try {
-                SwingUtilities.invokeAndWait(this::repaint);
+                SwingUtilities.invokeAndWait(() -> {
+                    this.memory = graphicsMemory;
+                    repaint();
+                });
             } catch (InterruptedException | InvocationTargetException e) {
                 throw new RuntimeException("Failed to render.", e);
             }
@@ -43,21 +44,23 @@ final class Display extends JComponent {
         Graphics2D g2d = (Graphics2D) g;
         Rectangle pixel = new Rectangle(0, 0, getWidth() / width, getHeight() / height);
 
-        int currentPixel = 0;
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                Color color = memory[currentPixel++] ? Color.WHITE : Color.BLACK;
+        for (int y = 0; y < memory.length; y++) {
+            boolean[] row = memory[y];
+            for (int i = 0; i < row.length; i++) {
+                Color color = row[i] ? Color.WHITE : Color.BLACK;
                 Color _color = g2d.getColor();
                 try {
                     g2d.setColor(color);
-                    g2d.draw(pixel);
                     g2d.fill(pixel);
-                    pixel.setLocation(pixel.x + scaleFactor, pixel.y);
+                    g2d.draw(pixel);
+                    int newXPosition = pixel.x + scaleFactor + 1;
+                    pixel.setLocation(newXPosition, pixel.y);
                 } finally {
                     g2d.setColor(_color);
                 }
             }
-            pixel.setLocation(0, pixel.y + scaleFactor);
+            int newYPosition = pixel.y + scaleFactor + 1;
+            pixel.setLocation(0, newYPosition);
         }
     }
 }

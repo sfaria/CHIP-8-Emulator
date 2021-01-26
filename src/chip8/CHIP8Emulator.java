@@ -3,7 +3,6 @@ package chip8;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
-import java.lang.reflect.InvocationTargetException;
 
 /**
  *
@@ -53,22 +52,27 @@ final class CHIP8Emulator {
     // -------------------- Main Method --------------------
 
     public static void main(String[] args) throws Exception {
-        CPU cpu = new CPU();
+        ClockSimulator cpuClock = new ClockSimulator(500);
+        ClockSimulator delayClock = new ClockSimulator(60);
         Keyboard keyboard = new Keyboard();
-        cpu.init(keyboard);
+        CPU cpu = new CPU(keyboard, delayClock);
 
         boolean startWaiting = true;
+        @SuppressWarnings("ConstantConditions")
         Breakpointer breakpointer = new Breakpointer(startWaiting);
         SwingUtilities.invokeAndWait(() -> setupGraphicsSystem(cpu, keyboard, breakpointer));
 
-        cpu.loadRom("res/c8_test.c8");
-        long wait = 1000;
-
+        cpu.initAndLoadRom("res/test_opcode.ch8");
         breakpointer.waitUntilStepOver();
+        cpuClock.startClock();
+        delayClock.startClock();
+
         //noinspection InfiniteLoopStatement
         while (true) {
-            cpu.emulateCycle();
-            breakpointer.waitUntilStepOver();
+            cpuClock.withClockRegulation(() -> {
+                cpu.emulateCycle();
+                breakpointer.waitUntilStepOver();
+            });
         }
     }
 }

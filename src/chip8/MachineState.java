@@ -12,11 +12,11 @@ final class MachineState {
     // -------------------- Private Variables --------------------
 
     private short programCounter;
-    private short[] registerStates;
+    private byte[] registerStates;
 
     // -------------------- Constructors --------------------
 
-    MachineState(short programCounter, short[] registerStates) {
+    MachineState(short programCounter, byte[] registerStates) {
         this.programCounter = programCounter;
         this.registerStates = registerStates;
     }
@@ -27,7 +27,7 @@ final class MachineState {
         return programCounter;
     }
 
-    final short getRegisterAt(int registerIndex) {
+    final byte getRegisterAt(int registerIndex) {
         if (registerIndex < 0 || registerIndex > 15) {
             throw new IllegalStateException("Unknown register: V" + registerIndex);
         }

@@ -15,55 +15,58 @@ final class CPU {
     // -------------------- Private Statics --------------------
 
     // system font set
-    private static final short[] FONT_SET = new short[] {
-            0x00F0, 0x0090, 0x0090, 0x0090, 0x00F0, // 0
-            0x0020, 0x0060, 0x0020, 0x0020, 0x0070, // 1
-            0x00F0, 0x0010, 0x00F0, 0x0080, 0x00F0, // 2
-            0x00F0, 0x0010, 0x00F0, 0x0010, 0x00F0, // 3
-            0x0090, 0x0090, 0x00F0, 0x0010, 0x0010, // 4
-            0x00F0, 0x0080, 0x00F0, 0x0010, 0x00F0, // 5
-            0x00F0, 0x0080, 0x00F0, 0x0090, 0x00F0, // 6
-            0x00F0, 0x0010, 0x0020, 0x0040, 0x0040, // 7
-            0x00F0, 0x0090, 0x00F0, 0x0090, 0x00F0, // 8
-            0x00F0, 0x0090, 0x00F0, 0x0010, 0x00F0, // 9
-            0x00F0, 0x0090, 0x00F0, 0x0090, 0x0090, // A
-            0x00E0, 0x0090, 0x00E0, 0x0090, 0x00E0, // B
-            0x00F0, 0x0080, 0x0080, 0x0080, 0x00F0, // C
-            0x00E0, 0x0090, 0x0090, 0x0090, 0x00E0, // D
-            0x00F0, 0x0080, 0x00F0, 0x0080, 0x00F0, // E
-            0x00F0, 0x0080, 0x00F0, 0x0080, 0x0080  // F
+    private static final byte[] FONT_SET = new byte[] {
+            (byte) 0x00F0, (byte) 0x0090, (byte) 0x0090, (byte) 0x0090, (byte) 0x00F0, // 0
+            (byte) 0x0020, (byte) 0x0060, (byte) 0x0020, (byte) 0x0020, (byte) 0x0070, // 1
+            (byte) 0x00F0, (byte) 0x0010, (byte) 0x00F0, (byte) 0x0080, (byte) 0x00F0, // 2
+            (byte) 0x00F0, (byte) 0x0010, (byte) 0x00F0, (byte) 0x0010, (byte) 0x00F0, // 3
+            (byte) 0x0090, (byte) 0x0090, (byte) 0x00F0, (byte) 0x0010, (byte) 0x0010, // 4
+            (byte) 0x00F0, (byte) 0x0080, (byte) 0x00F0, (byte) 0x0010, (byte) 0x00F0, // 5
+            (byte) 0x00F0, (byte) 0x0080, (byte) 0x00F0, (byte) 0x0090, (byte) 0x00F0, // 6
+            (byte) 0x00F0, (byte) 0x0010, (byte) 0x0020, (byte) 0x0040, (byte) 0x0040, // 7
+            (byte) 0x00F0, (byte) 0x0090, (byte) 0x00F0, (byte) 0x0090, (byte) 0x00F0, // 8
+            (byte) 0x00F0, (byte) 0x0090, (byte) 0x00F0, (byte) 0x0010, (byte) 0x00F0, // 9
+            (byte) 0x00F0, (byte) 0x0090, (byte) 0x00F0, (byte) 0x0090, (byte) 0x0090, // A
+            (byte) 0x00E0, (byte) 0x0090, (byte) 0x00E0, (byte) 0x0090, (byte) 0x00E0, // B
+            (byte) 0x00F0, (byte) 0x0080, (byte) 0x0080, (byte) 0x0080, (byte) 0x00F0, // C
+            (byte) 0x00E0, (byte) 0x0090, (byte) 0x0090, (byte) 0x0090, (byte) 0x00E0, // D
+            (byte) 0x00F0, (byte) 0x0080, (byte) 0x00F0, (byte) 0x0080, (byte) 0x00F0, // E
+            (byte) 0x00F0, (byte) 0x0080, (byte) 0x00F0, (byte) 0x0080, (byte) 0x0080  // F
     };
 
     // -------------------- Private Methods --------------------
 
     // registers and memory
-    private int currentOpcode = 0x0000;                 // two bytes used
-    private short[] memory = new short[4096];           // 1 byte * 4096
-    private short[] vRegister = new short[16];          // two bytes each
-    private short indexRegister = 0x0000;                 // two bytes
-    private short programCounter = 0x2000;                // two bytes
+    private byte[] memory = new byte[4096];
+    private byte[] vRegister = new byte[16];
+    private short indexRegister = 0;
+    private short programCounter = 512;
 
     // stack variables
-    private short[] stack = new short[16];                  // two bytes each
-    private short stackPointer = 0x0000;                  // two byte pointer into stack
+    private short[] stack = new short[16];
+    private short stackPointer = 0;
 
     // graphics "memory"
-    private boolean[] graphics = new boolean[64 * 32];  // matrix of "bits"
+    private boolean[][] graphics = new boolean[32][64];
 
     // timers
-    private short delayTimer = 0x0000;                    // 2 bytes
-    private short soundTimer = 0x0000;                    // 2 bytes
+    private short delayTimer = 0;
+    private short soundTimer = 0;
 
     // rng
     private final Random rng = new Random();
-    private Keyboard keyboard = null;
 
     // general stuff
     private final EventListenerList ll = new EventListenerList();
+    private final ClockSimulator delayClock;
+    private final Keyboard keyboard;
 
     // -------------------- Constructors --------------------
 
-    CPU() { }
+    CPU(Keyboard keyboard, ClockSimulator delayClock) {
+        this.delayClock = Objects.requireNonNull(delayClock);
+        this.keyboard = Objects.requireNonNull(keyboard);
+    }
 
     // -------------------- Default Methods --------------------
 
@@ -77,32 +80,26 @@ final class CPU {
         ll.add(RenderListener.class, l);
     }
 
-    final void init(Keyboard keyboard) {
-        this.keyboard = keyboard;
-        this.currentOpcode = 0x0000;
-        this.programCounter = 0x200;
-        this.indexRegister = 0x000;
-        this.stackPointer = 0x000;
+    final void initAndLoadRom(String romLocation) throws IOException {
+        this.programCounter = 512;
+        this.indexRegister = 0;
+        this.stackPointer = 0;
         this.stack = new short[16];
-        this.memory = new short[4096];
-        this.vRegister = new short[16];
-        this.graphics = new boolean[64 * 32];
-        this.delayTimer = 0x00;
-        this.soundTimer = 0x00;
-        this.delayTimer = 0x0000;
-        this.soundTimer = 0x0000;
+        this.memory = new byte[4096];
+        this.vRegister = new byte[16];
+        this.graphics = new boolean[32][64];
+        this.delayTimer = 0;
+        this.soundTimer = 0;
+        this.delayTimer = 0;
+        this.soundTimer = 0;
 
         // load the system font set
-        IntStream.range(0, FONT_SET.length)
-                .forEach(index -> this.memory[index] = FONT_SET[index]);
-    }
+        System.arraycopy(FONT_SET, 0, this.memory, 0, FONT_SET.length);
 
-    final void loadRom(String romLocation) throws IOException {
         File romFile = new File(romLocation);
         byte[] fileBytes = Files.readAllBytes(romFile.toPath());
-        for (int fileIndex = 0, memIndex = 512; fileIndex < fileBytes.length; fileIndex++, memIndex++) {
-            memory[memIndex] = (short) Byte.toUnsignedInt(fileBytes[fileIndex]);
-        }
+        assert romFile.length() < memory.length - programCounter; // make sure we don't overrun memory
+        System.arraycopy(fileBytes, 0, memory, programCounter, fileBytes.length);
         fireInit();
     }
 
@@ -111,39 +108,39 @@ final class CPU {
 
         boolean render = false;
 
-        short highByte = memory[programCounter];
-        short lowByte = memory[programCounter + 1];
-        currentOpcode = (short) (highByte << 8 | lowByte);
+        byte highByte = memory[programCounter];
+        byte lowByte = memory[programCounter + 1];
+        short currentOpcode = (short) ((highByte << 8) | lowByte);
+        System.out.println(Utilities.toHex(currentOpcode));
         short nnn = (short) (currentOpcode & 0x0FFF);
-        short n = (short) (currentOpcode & 0x000F);
-        short x = (short) (highByte & 0x000F);
-        short y = (short) ((lowByte & 0xF000) >> 2);
-        short nn = lowByte;
+        byte n = (byte) (currentOpcode & 0x000F);
+        byte x = (byte) (highByte & 0x0F);
+        byte y = (byte) ((lowByte & 0xF0) >> 4);
 
+        byte highNibble = (byte) ((highByte & 0xF0) >> 4);
         programCounter += 2;
-        short topByte = (short) ((currentOpcode & 0xF000) >> 12);
-        switch (topByte) {
+        switch (highNibble) {
             case 0x0:
-                render = do0X();
+                render = do0X(currentOpcode);
                 break;
             case 0x1:
                 // 1NNN - Jumps to memory address NNN
-                programCounter = nnn;
+                programCounter = nnn; // probably should check that this is in bounds
                 break;
             case 0x2:
                 // 2NNN - Jumps to subroutine at NNN
                 stack[stackPointer++] = programCounter;
-                programCounter = nnn;
+                programCounter = nnn; // probably should check that this is in bounds
                 break;
             case 0x3:
                 // 3XNN - Skips the next instruction if VX equals NN
-                if (vRegister[x] == nn) {
+                if (vRegister[x] == lowByte) { // todo check
                     programCounter += 2;
                 }
                 break;
             case 0x4:
                 // 4XNN - Skips the next instruction if VX doesn't equal NN
-                if (vRegister[x] != nn) {
+                if (vRegister[x] != lowByte) {
                     programCounter += 2;
                 }
                 break;
@@ -155,11 +152,11 @@ final class CPU {
                 break;
             case 0x6:
                 // 6XNN - Sets VX to NN
-                vRegister[x] = nn;
+                vRegister[x] = lowByte;
                 break;
             case 0x7:
                 // 7XNN - Adds NN to VX
-                vRegister[x] += nn;
+                vRegister[x] += lowByte;
                 break;
             case 0x8:
                 do8XY(n, x, y);
@@ -170,15 +167,21 @@ final class CPU {
                     programCounter += 2;
                 }
                 break;
+            case 0xA:
+                //Annn - LD I, addr
+                //Set I = nnn.
+                //
+                //The value of register I is set to nnn.
+                indexRegister = nnn;
+                break;
             case 0xB:
                 // BNNN - Jumps to the address NNN plus V0
                 programCounter = (short) (nnn + vRegister[0x0]);
                 break;
             case 0xC:
                 // CXNN - Sets VX to a random number and NN
-                byte[] randomByte = new byte[1];
-                rng.nextBytes(randomByte);
-                vRegister[x] = (byte) (randomByte[0] & nn);
+                short randomShort = (short) rng.nextInt(255);
+                vRegister[x] = (byte) ((randomShort & 0x00FF) & lowByte);
                 break;
             case 0xD:
                 render = do0XD(n, x, y);
@@ -193,21 +196,20 @@ final class CPU {
                 throw new IllegalArgumentException();
         }
 
-        if (delayTimer > 0) {
-            delayTimer--;
-        }
-
-        if (soundTimer > 0) {
-            if (soundTimer == 1) {
+        delayClock.withClockRegulation(() -> {
+            delayTimer = (short) Math.max(0, delayTimer - 1);
+            if (soundTimer > 0) {
                 System.out.println("Beep!");
             }
-            soundTimer--;
-        }
+            soundTimer = (short) Math.max(0, soundTimer - 1);
+        });
 
         if (render) {
             fireRenderNeeded();
         }
     }
+
+    // -------------------- Private Methods --------------------
 
     private boolean do0XD(short n, short x, short y) {
         // DXYN - Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
@@ -216,23 +218,46 @@ final class CPU {
         // be erased, VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the
         // coordinates of the display, it wraps around to the opposite side of the screen. See instruction 8xy3 for more
         // information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
-        short[] sprite = new short[n];
+
+        boolean collision = false;
+        int xCoord = vRegister[x];
+        int yCoord = vRegister[y];
         for (int i = 0; i < n; i++) {
-            sprite[i] = memory[indexRegister + i];
+            byte spriteLine =  memory[indexRegister + i];
+            boolean[] bitLine = new boolean[8];
+            bitLine[0] = ((byte) ((spriteLine & 0b1000_0000) >> 7)) == 1; // bit 8 (MSB)
+            bitLine[1] = ((byte) ((spriteLine & 0b0010_0000) >> 5)) == 1; // bit 6
+            bitLine[3] = ((byte) ((spriteLine & 0b0001_0000) >> 4)) == 1; // bit 5
+            bitLine[4] = ((byte) ((spriteLine & 0b0000_1000) >> 3)) == 1; // bit 4
+            bitLine[5] = ((byte) ((spriteLine & 0b0000_0100) >> 2)) == 1; // bit 3
+            bitLine[6] = ((byte) ((spriteLine & 0b0000_0010) >> 1)) == 1; // bit 2
+            bitLine[7] = ((byte) (spriteLine  & 0b0000_0001))       == 1; // bit 1 (LSB)
+
+            int adjustedX = xCoord * (yCoord + 1);
+            for (int j = 0; j < bitLine.length; j++) {
+                boolean current = graphics[yCoord + i][xCoord + j];
+                boolean newValue = bitLine[j];
+                boolean flipped = current || newValue;
+                if (current != flipped) {
+                    collision = true;
+                }
+                graphics[yCoord + i][xCoord + j] = flipped;
+            }
         }
 
-        short xCoord = vRegister[x];
-        short yCoord = vRegister[y];
+        if (collision) {
+            vRegister[0xF] = 1;
+        } else {
+            vRegister[0xF] = 0;
+        }
 
         return true;
     }
 
-    // -------------------- Private Methods --------------------
-
-    private boolean do0X() {
+    private boolean do0X(short currentOpcode) {
         if (currentOpcode == 0x00E0) {
             // 00E0 - Clear the screen
-            graphics = new boolean[64 * 32];
+            graphics = new boolean[32][64];
             return true;
         } else if (currentOpcode == 0x00EE) {
             // 00EE - Returns from a subroutine
@@ -252,26 +277,26 @@ final class CPU {
                 break;
             case 0x1:
                 // 8XY1 - Sets VX to VX or VY
-                vRegister[x] = (short) (vRegister[x] | vRegister[y]);
+                vRegister[x] = (byte) (vRegister[x] | vRegister[y]);
                 break;
             case 0x2:
                 // 8XY2 - Sets VX to VX and VY
-                vRegister[x] = (short) (vRegister[x] & vRegister[y]);
+                vRegister[x] = (byte) (vRegister[x] & vRegister[y]);
                 break;
             case 0x3:
                 // 8XY3 - Sets VX to VX xor VY
-                vRegister[x] = (short) (vRegister[x] ^ vRegister[y]);
+                vRegister[x] = (byte) (vRegister[x] ^ vRegister[y]);
                 break;
             case 0x4:
                 // 8XY4 - Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't
-                short result = (short) (vRegister[x] + vRegister[y]);
+                int result = ((short) vRegister[x]) + ((short) vRegister[y]);
                 boolean carry = result > 255;
                 if (carry) {
                     vRegister[0xF] = 1;
                 } else {
                     vRegister[0xF] = 0;
                 }
-                vRegister[x] = (short)(result & 0x00FF);
+                vRegister[x] = (byte)(result & 0x00FF);
                 break;
             case 0x5:
                 // 8XY5 - VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't
@@ -280,7 +305,7 @@ final class CPU {
                 } else {
                     vRegister[0xF] = 0;
                 }
-                vRegister[x] = (short) (vRegister[x] - vRegister[y]);
+                vRegister[x] = (byte)(((short) vRegister[x]) - ((short) vRegister[y]));
                 break;
             case 0x6:
                 // 8XY6 - Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift
@@ -294,12 +319,12 @@ final class CPU {
                 } else {
                     vRegister[0xF] = 0;
                 }
-                vRegister[x] = (short) (vRegister[y] - vRegister[x]);
+                vRegister[x] = (byte) ((short) vRegister[y] - ((short) vRegister[x]));
                 break;
             case 0xE:
                 // 8XYE - Shifts VX left by one. VF is set to the value of the most significant bit of VX before the shift
-                vRegister[0xF] = (short) ((vRegister[x] >> 4) & 0b00000001);
-                vRegister[x] = (short) (vRegister[x] << 1);
+                vRegister[0xF] = (byte) ((vRegister[x] >> 4) & 0b0001);
+                vRegister[x] = (byte) (vRegister[x] << 1);
                 break;
             default:
                 throw new IllegalArgumentException();
@@ -329,7 +354,7 @@ final class CPU {
         switch (lowByte) {
             case 0x07:
                 // FX07 - Sets VX to the value of the delay timer
-                vRegister[x] = delayTimer;
+                vRegister[x] = (byte) delayTimer;
                 break;
             case 0x0A:
                 // FX0A - A key press is awaited, and then stored in VX
@@ -383,7 +408,7 @@ final class CPU {
             operations.add(new OperationInfo(opcode));
         }
 
-        short[] registerCopy = new short[vRegister.length];
+        byte[] registerCopy = new byte[vRegister.length];
         System.arraycopy(vRegister, 0, registerCopy, 0, vRegister.length);
         MachineState state = new MachineState(programCounter, registerCopy);
         for (DebuggerListener l : ll.getListeners(DebuggerListener.class)) {
@@ -392,7 +417,7 @@ final class CPU {
     }
 
     private void fireExecuteStateChanged() {
-        short[] registerCopy = new short[vRegister.length];
+        byte[] registerCopy = new byte[vRegister.length];
         System.arraycopy(vRegister, 0, registerCopy, 0, vRegister.length);
         MachineState state = new MachineState(programCounter, registerCopy);
         for (DebuggerListener l : ll.getListeners(DebuggerListener.class)) {
@@ -401,10 +426,16 @@ final class CPU {
     }
 
     private void fireRenderNeeded() {
-        boolean[] graphicsCopy = new boolean[graphics.length];
-        System.arraycopy(graphics, 0, graphicsCopy, 0, graphics.length);
+        boolean[][] graphicsCopy = new boolean[32][64];
+        arrayCopy(graphics, graphicsCopy);
         for (RenderListener l : ll.getListeners(RenderListener.class)) {
             l.render(graphicsCopy);
+        }
+    }
+
+    public static void arrayCopy(boolean[][] src, boolean[][] dest) {
+        for (int i = 0; i < src.length; i++) {
+            System.arraycopy(src[i], 0, dest[i], 0, src[i].length);
         }
     }
 }
