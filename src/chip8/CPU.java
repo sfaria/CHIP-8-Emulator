@@ -226,14 +226,14 @@ final class CPU {
             byte spriteLine =  memory[indexRegister + i];
             boolean[] bitLine = new boolean[8];
             bitLine[0] = ((byte) ((spriteLine & 0b1000_0000) >> 7)) == 1; // bit 8 (MSB)
-            bitLine[1] = ((byte) ((spriteLine & 0b0010_0000) >> 5)) == 1; // bit 6
+            bitLine[1] = ((byte) ((spriteLine & 0b0100_0000) >> 6)) == 1; // bit 6
+            bitLine[2] = ((byte) ((spriteLine & 0b0010_0000) >> 5)) == 1; // bit 6
             bitLine[3] = ((byte) ((spriteLine & 0b0001_0000) >> 4)) == 1; // bit 5
             bitLine[4] = ((byte) ((spriteLine & 0b0000_1000) >> 3)) == 1; // bit 4
             bitLine[5] = ((byte) ((spriteLine & 0b0000_0100) >> 2)) == 1; // bit 3
             bitLine[6] = ((byte) ((spriteLine & 0b0000_0010) >> 1)) == 1; // bit 2
             bitLine[7] = ((byte) (spriteLine  & 0b0000_0001))       == 1; // bit 1 (LSB)
 
-            int adjustedX = xCoord * (yCoord + 1);
             for (int j = 0; j < bitLine.length; j++) {
                 boolean current = graphics[yCoord + i][xCoord + j];
                 boolean newValue = bitLine[j];
@@ -241,7 +241,7 @@ final class CPU {
                 if (current != flipped) {
                     collision = true;
                 }
-                graphics[yCoord + i][xCoord + j] = flipped;
+                graphics[yCoord + i][xCoord + j] = newValue;
             }
         }
 

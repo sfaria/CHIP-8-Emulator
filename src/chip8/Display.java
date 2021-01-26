@@ -53,13 +53,13 @@ final class Display extends JComponent {
                     g2d.setColor(color);
                     g2d.fill(pixel);
                     g2d.draw(pixel);
-                    int newXPosition = pixel.x + scaleFactor + 1;
+                    int newXPosition = pixel.x + scaleFactor;
                     pixel.setLocation(newXPosition, pixel.y);
                 } finally {
                     g2d.setColor(_color);
                 }
             }
-            int newYPosition = pixel.y + scaleFactor + 1;
+            int newYPosition = pixel.y + scaleFactor;
             pixel.setLocation(0, newYPosition);
         }
     }
