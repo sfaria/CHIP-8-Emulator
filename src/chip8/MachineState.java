@@ -11,17 +11,29 @@ final class MachineState {
 
     // -------------------- Private Variables --------------------
 
-    private short programCounter;
-    private byte[] registerStates;
+    private final OperationInfo currentOperation;
+    private final OperationInfo nextOperation;
+    private final short programCounter;
+    private final byte[] registerStates;
 
     // -------------------- Constructors --------------------
 
-    MachineState(short programCounter, byte[] registerStates) {
+    MachineState(OperationState state, short programCounter, byte[] registerStates) {
+        this.currentOperation = state.getCurrent();
+        this.nextOperation = state.getNext();
         this.programCounter = programCounter;
         this.registerStates = registerStates;
     }
 
     // -------------------- Default Methods --------------------
+
+    final OperationInfo getCurrentOperation() {
+        return currentOperation;
+    }
+
+    final OperationInfo getNextOperation() {
+        return nextOperation;
+    }
 
     final short getProgramCounter() {
         return programCounter;

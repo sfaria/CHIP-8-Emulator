@@ -1,14 +1,11 @@
 package chip8;
 
-import jdk.jshell.execution.Util;
-
 import javax.swing.event.EventListenerList;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.stream.IntStream;
 
 import static chip8.Utilities.*;
 
@@ -58,6 +55,9 @@ final class CPU {
     private short delayTimer = -1;
     private short soundTimer = -1;
 
+    // flags
+    private boolean renderFlag;
+
     // rng
     private final Random rng = new Random();
 
@@ -65,6 +65,7 @@ final class CPU {
     private final EventListenerList ll = new EventListenerList();
     private final ClockSimulator delayClock;
     private final Keyboard keyboard;
+
 
     // -------------------- Constructors --------------------
 
@@ -114,25 +115,23 @@ final class CPU {
     }
 
     final void emulateCycle() {
-        fireExecuteStateChanged();
+        renderFlag = false;
 
-        boolean render = false;
+        OperationState state = new OperationState(programCounter, memory);
+        System.out.println(state);
+        fireExecuteStateChanged(state);
 
-        byte highByte = memory[programCounter];
-        byte lowByte = memory[programCounter + 1];
         programCounter += 2;
+        byte lowByte = state.getLowByte();
+        short currentOpcode = state.getCurrentOpcode();
+        short nnn = state.getNNN();
+        byte n = state.getN();
+        byte x = state.getX();
+        byte y = state.getY();
 
-        short currentOpcode = (short) ((highByte << 8) | lowByte);
-        System.out.println(toHex(currentOpcode));
-        short nnn = (short) (currentOpcode & 0x0FFF);
-        byte n = (byte) (currentOpcode & 0x000F);
-        byte x = (byte) (highByte & 0x0F);
-        byte y = (byte) ((lowByte & 0xF0) >> 4);
-
-        byte highNibble = (byte) ((highByte & 0xF0) >> 4);
-        switch (highNibble) {
+        switch (state.getHighNibble()) {
             case 0x0:
-                render = do0X(currentOpcode);
+                do0X(currentOpcode);
                 break;
             case 0x1:
                 // 1NNN - Jumps to memory address NNN
@@ -197,7 +196,7 @@ final class CPU {
                 vRegister[x] = (byte) ((randomShort & 0x00FF) & lowByte);
                 break;
             case 0xD:
-                render = do0XD(n, x, y);
+                do0XD(n, x, y);
                 break;
             case 0xE:
                 doEX(n, x);
@@ -209,22 +208,24 @@ final class CPU {
                 throw new IllegalArgumentException();
         }
 
+        fireExecuteStateChanged(state);
         delayClock.withClockRegulation(() -> {
             delayTimer = (short) Math.max(0, delayTimer - 1);
             if (soundTimer > 0) {
                 System.out.println("Beep!");
             }
             soundTimer = (short) Math.max(0, soundTimer - 1);
+            fireExecuteStateChanged(state);
         });
 
-        if (render) {
+        if (renderFlag) {
             fireRenderNeeded();
         }
     }
 
     // -------------------- Private Methods --------------------
 
-    private boolean do0XD(short n, short x, short y) {
+    private void do0XD(short n, short x, short y) {
         // DXYN - Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
         // The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites
         // on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen. If this causes any pixels to
@@ -264,14 +265,14 @@ final class CPU {
             vRegister[0xF] = 0;
         }
 
-        return true;
+        renderFlag = true;
     }
 
-    private boolean do0X(short currentOpcode) {
+    private void do0X(short currentOpcode) {
         if (isEqual(currentOpcode, 0x00E0)) {
             // 00E0 - Clear the screen
             graphics = new boolean[32][64];
-            return true;
+            renderFlag = true;
         } else if (isEqual(currentOpcode, 0x00EE)) {
             // 00EE - Returns from a subroutine
             programCounter = stack[--stackPointer];
@@ -279,7 +280,6 @@ final class CPU {
             // 0NNN - Calls RCA 1802 program at address NNN. Ignored by modern interpreters.
             System.out.println("0NNN called: Ignoring");
         }
-        return false;
     }
 
     @SuppressWarnings("EnhancedSwitchMigration")
@@ -419,26 +419,19 @@ final class CPU {
     }
 
     private void fireInit() {
-        List<OperationInfo> operations = new ArrayList<>();
-        for (int memIndex = programCounter; memIndex < memory.length; memIndex = memIndex + 2) {
-            short highByte = memory[memIndex];
-            short lowByte = memory[memIndex + 1];
-            short opcode = (short) (highByte << 8 | lowByte);
-            operations.add(new OperationInfo(opcode));
-        }
-
+        OperationState initialState = new OperationState(programCounter, memory);
         byte[] registerCopy = new byte[vRegister.length];
         System.arraycopy(vRegister, 0, registerCopy, 0, vRegister.length);
-        MachineState state = new MachineState(programCounter, registerCopy);
+        MachineState state = new MachineState(initialState, programCounter, registerCopy);
         for (DebuggerListener l : ll.getListeners(DebuggerListener.class)) {
-            l.executionStarted(state, operations);
+            l.machineStateChanged(state);
         }
     }
 
-    private void fireExecuteStateChanged() {
+    private void fireExecuteStateChanged(OperationState operationState) {
         byte[] registerCopy = new byte[vRegister.length];
         System.arraycopy(vRegister, 0, registerCopy, 0, vRegister.length);
-        MachineState state = new MachineState(programCounter, registerCopy);
+        MachineState state = new MachineState(operationState, programCounter, registerCopy);
         for (DebuggerListener l : ll.getListeners(DebuggerListener.class)) {
             l.machineStateChanged(state);
         }

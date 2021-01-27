@@ -28,16 +28,13 @@ final class CHIP8Emulator {
         Display view = new Display(cpu);
 
         JPanel displayBorder = new JPanel();
-        displayBorder.setBorder(new EmptyBorder(4, 4, 4, 0));
+        displayBorder.setBorder(new EmptyBorder(4, 4, 4, 4));
         displayBorder.add(view);
         displayPanel.add(displayBorder, BorderLayout.CENTER);
 
-        RegisterView registerView = new RegisterView(cpu);
+        RegisterView registerView = new RegisterView(cpu, breakpointer);
         displayPanel.add(registerView, BorderLayout.SOUTH);
         mainPanel.add(displayPanel, BorderLayout.CENTER);
-
-        InstructionView instructionView = new InstructionView(cpu, breakpointer);
-        mainPanel.add(instructionView, BorderLayout.EAST);
 
         JFrame frame = new JFrame("CHIP8 Emulator");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
