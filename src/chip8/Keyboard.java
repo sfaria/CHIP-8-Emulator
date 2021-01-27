@@ -55,9 +55,10 @@ final class Keyboard {
                     }
                     break;
                 case KEY_RELEASED:
-                    byte keystroke = KEY_MAP.get(e.getKeyCode());
-                    if (e.getModifiersEx() == 0 && Utilities.isEqual(keystroke, currentKey)) {
-                        System.out.printf("Key Released: %s%n", Utilities.toHex(keystroke));
+                    Byte keystroke = KEY_MAP.get(e.getKeyCode());
+                    byte key = keystroke == null ? -1 : keystroke;
+                    if (e.getModifiersEx() == 0 && Utilities.isEqual(key, currentKey)) {
+                        System.out.printf("Key Released: %s%n", Utilities.toHex(key));
                         currentKey = -1;
                     }
                     break;
