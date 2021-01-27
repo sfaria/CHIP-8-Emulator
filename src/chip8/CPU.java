@@ -1,11 +1,16 @@
 package chip8;
 
+import jdk.jshell.execution.Util;
+
 import javax.swing.event.EventListenerList;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.IntStream;
+
+import static chip8.Utilities.*;
 
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
@@ -50,8 +55,8 @@ final class CPU {
     private boolean[][] graphics = new boolean[32][64];
 
     // timers
-    private short delayTimer = 0;
-    private short soundTimer = 0;
+    private short delayTimer = -1;
+    private short soundTimer = -1;
 
     // rng
     private final Random rng = new Random();
@@ -81,6 +86,11 @@ final class CPU {
     }
 
     final void initAndLoadRom(String romLocation) throws IOException {
+        File romFile = new File(romLocation);
+        if (!romFile.exists()) {
+            throw new FileNotFoundException("File '%s' not found!".formatted(romLocation));
+        }
+
         this.programCounter = 512;
         this.indexRegister = 0;
         this.stackPointer = 0;
@@ -96,7 +106,7 @@ final class CPU {
         // load the system font set
         System.arraycopy(FONT_SET, 0, this.memory, 0, FONT_SET.length);
 
-        File romFile = new File(romLocation);
+        // load the file contents into memory
         byte[] fileBytes = Files.readAllBytes(romFile.toPath());
         assert romFile.length() < memory.length - programCounter; // make sure we don't overrun memory
         System.arraycopy(fileBytes, 0, memory, programCounter, fileBytes.length);
@@ -110,15 +120,16 @@ final class CPU {
 
         byte highByte = memory[programCounter];
         byte lowByte = memory[programCounter + 1];
+        programCounter += 2;
+
         short currentOpcode = (short) ((highByte << 8) | lowByte);
-        System.out.println(Utilities.toHex(currentOpcode));
+        System.out.println(toHex(currentOpcode));
         short nnn = (short) (currentOpcode & 0x0FFF);
         byte n = (byte) (currentOpcode & 0x000F);
         byte x = (byte) (highByte & 0x0F);
         byte y = (byte) ((lowByte & 0xF0) >> 4);
 
         byte highNibble = (byte) ((highByte & 0xF0) >> 4);
-        programCounter += 2;
         switch (highNibble) {
             case 0x0:
                 render = do0X(currentOpcode);
@@ -134,19 +145,19 @@ final class CPU {
                 break;
             case 0x3:
                 // 3XNN - Skips the next instruction if VX equals NN
-                if (vRegister[x] == lowByte) { // todo check
+                if (isEqual(vRegister[x], lowByte)) {
                     programCounter += 2;
                 }
                 break;
             case 0x4:
                 // 4XNN - Skips the next instruction if VX doesn't equal NN
-                if (vRegister[x] != lowByte) {
+                if (!isEqual(vRegister[x], lowByte)) {
                     programCounter += 2;
                 }
                 break;
             case 0x5:
                 // 5XY0 - Skips the next instruction if VX equals VY.
-                if (vRegister[x] == vRegister[y]) {
+                if (isEqual(vRegister[x], vRegister[y])) {
                     programCounter += 2;
                 }
                 break;
@@ -163,20 +174,22 @@ final class CPU {
                 break;
             case 0x9:
                 // 9XY0 - Skips the next instruction if VX doesn't equal VY
-                if (x != y) {
+                if (!isEqual(vRegister[x], vRegister[y])) {
                     programCounter += 2;
                 }
                 break;
             case 0xA:
-                //Annn - LD I, addr
-                //Set I = nnn.
-                //
-                //The value of register I is set to nnn.
+                /*
+                 *  ANNN - LD I, addr
+                 *  Set I = nnn.
+                 *
+                 *  The value of register I is set to nnn.
+                 */
                 indexRegister = nnn;
                 break;
             case 0xB:
                 // BNNN - Jumps to the address NNN plus V0
-                programCounter = (short) (nnn + vRegister[0x0]);
+                programCounter = (short) (nnn + (short) vRegister[0x0]);
                 break;
             case 0xC:
                 // CXNN - Sets VX to a random number and NN
@@ -255,11 +268,11 @@ final class CPU {
     }
 
     private boolean do0X(short currentOpcode) {
-        if (currentOpcode == 0x00E0) {
+        if (isEqual(currentOpcode, 0x00E0)) {
             // 00E0 - Clear the screen
             graphics = new boolean[32][64];
             return true;
-        } else if (currentOpcode == 0x00EE) {
+        } else if (isEqual(currentOpcode, 0x00EE)) {
             // 00EE - Returns from a subroutine
             programCounter = stack[--stackPointer];
         } else {
@@ -269,6 +282,7 @@ final class CPU {
         return false;
     }
 
+    @SuppressWarnings("EnhancedSwitchMigration")
     private void do8XY(short n, short x, short y) {
         switch (n) {
             case 0x0:
@@ -289,9 +303,8 @@ final class CPU {
                 break;
             case 0x4:
                 // 8XY4 - Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't
-                int result = ((short) vRegister[x]) + ((short) vRegister[y]);
-                boolean carry = result > 255;
-                if (carry) {
+                int result = ((int) vRegister[x]) + ((int) vRegister[y]);
+                if (result > 255) {
                     vRegister[0xF] = 1;
                 } else {
                     vRegister[0xF] = 0;
@@ -299,7 +312,12 @@ final class CPU {
                 vRegister[x] = (byte)(result & 0x00FF);
                 break;
             case 0x5:
-                // 8XY5 - VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't
+                /*
+                 * 8xy5 - SUB Vx, Vy
+                 * Set Vx = Vx - Vy, set VF = NOT borrow.
+                 *
+                 * If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
+                 */
                 if (vRegister[x] > vRegister[y]) {
                     vRegister[0xF] = 1;
                 } else {
@@ -350,6 +368,7 @@ final class CPU {
         }
     }
 
+    @SuppressWarnings("EnhancedSwitchMigration")
     private void doFX(short lowByte, short x) {
         switch (lowByte) {
             case 0x07:
@@ -370,12 +389,12 @@ final class CPU {
                 break;
             case 0x1E:
                 // FX1E - Adds VX to I
-                indexRegister += vRegister[x];
+                indexRegister += ((short) (vRegister[x]));
                 break;
             case 0x29:
                 // FX29 - Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are
                 // represented by a 4x5 font
-                indexRegister = (short) (vRegister[x] * 5);
+                indexRegister = (short) (((short) vRegister[x]) * 5);
                 break;
             case 0x33:
                 // FX33 - Stores the Binary-coded decimal representation of VX, with the most significant of three digits at
