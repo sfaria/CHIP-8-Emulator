@@ -424,9 +424,10 @@ final class CPU {
                 // the address in I, the middle digit at I plus 1, and the least significant digit at I plus 2. (In other
                 // words, take the decimal representation of VX, place the hundreds digit in memory at location in I, the tens
                 // digit at location I+1, and the ones digit at location I+2.)
-                memory[indexRegister] = (byte) (vRegister[x] / 100);
-                memory[indexRegister + 1] = (byte) ((vRegister[x] / 10) % 10);
-                memory[indexRegister + 2] = (byte) ((vRegister[x] % 100) % 10);
+                short num = (short) ((short) vRegister[x] & 0x00FF);
+                memory[indexRegister] = (byte) (num / 100);
+                memory[indexRegister + 1] = (byte) ((num / 10) % 10);
+                memory[indexRegister + 2] = (byte) ((num % 100) % 10);
                 break;
             case 0x55:
                 // FX55 - Stores V0 to VX in memory starting at address I
