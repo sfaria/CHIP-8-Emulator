@@ -53,7 +53,7 @@ final class Breakpointer {
         }
     }
 
-    final void waitUntilStepOver() {
+    final void waitForSignal() {
         lock.lock();
         if (!wait) {
             return;

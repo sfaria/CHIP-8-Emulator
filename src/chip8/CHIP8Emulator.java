@@ -58,7 +58,7 @@ final class CHIP8Emulator {
         Breakpointer breakpointer = new Breakpointer(startWaiting);
         SwingUtilities.invokeAndWait(() -> setupGraphicsSystem(cpu, keyboard, breakpointer));
 
-        cpu.initAndLoadRom("res/test_opcode.ch8");
+        cpu.initAndLoadRom("res/pong.rom");
 //        breakpointer.waitUntilStepOver();
 
         ClockSimulator cpuClock = new ClockSimulator(500);

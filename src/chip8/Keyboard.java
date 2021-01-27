@@ -1,6 +1,7 @@
 package chip8;
 
 import javax.swing.JFrame;
+import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
@@ -13,71 +14,68 @@ import static java.awt.event.KeyEvent.*;
  */
 final class Keyboard {
 
-    private Map<Integer, Integer> keyMap = new HashMap<>() {{
-        put(VK_X, 0x0);
-        put(VK_1, 0x1);
-        put(VK_2, 0x2);
-        put(VK_3, 0x3);
-        put(VK_Q, 0x4);
-        put(VK_W, 0x5);
-        put(VK_E, 0x6);
-        put(VK_A, 0x7);
-        put(VK_S, 0x8);
-        put(VK_D, 0x9);
-        put(VK_Z, 0xA);
-        put(VK_C, 0xB);
-        put(VK_4, 0xC);
-        put(VK_R, 0xD);
-        put(VK_F, 0xE);
-        put(VK_V, 0xF);
+    // -------------------- Private Statics --------------------
+
+    private static final Map<Integer, Byte> KEY_MAP = new HashMap<>() {{
+        put(VK_X, (byte) 0x0);
+        put(VK_1, (byte) 0x1);
+        put(VK_2, (byte) 0x2);
+        put(VK_3, (byte) 0x3);
+        put(VK_Q, (byte) 0x4);
+        put(VK_W, (byte) 0x5);
+        put(VK_E, (byte) 0x6);
+        put(VK_A, (byte) 0x7);
+        put(VK_S, (byte) 0x8);
+        put(VK_D, (byte) 0x9);
+        put(VK_Z, (byte) 0xA);
+        put(VK_C, (byte) 0xB);
+        put(VK_4, (byte) 0xC);
+        put(VK_R, (byte) 0xD);
+        put(VK_F, (byte) 0xE);
+        put(VK_V, (byte) 0xF);
     }};
 
-    // 0x0 - 0xF, 16 keys
-    private final boolean[] keys = new boolean[16];
-    private final Object mutex = new Object();
+    // -------------------- Private Variables --------------------
 
-    final void attachKeyboard(JFrame keyPressProvider) {
-        KeyAdapter keyListener = new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getModifiersEx() == 0 && keyMap.containsKey(e.getKeyCode())) {
-                    Integer keystroke = keyMap.get(e.getKeyCode());
-                    System.out.println("Key Pressed: ${keystroke}");
-                    synchronized (mutex) {
-                        keys[keystroke] = true;
+    private byte currentKey = -1;
+    private final Breakpointer waiter = new Breakpointer(true);
+
+    // -------------------- Constructors --------------------
+
+    Keyboard() {
+        KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+        manager.addKeyEventDispatcher(e -> {
+            switch (e.getID()) {
+                case KEY_PRESSED:
+                    if (e.getModifiersEx() == 0 && KEY_MAP.containsKey(e.getKeyCode())) {
+                        byte keystroke = KEY_MAP.get(e.getKeyCode());
+                        System.out.printf("Key Pressed: %s%n", Utilities.toHex(keystroke));
+                        currentKey = keystroke;
+                        waiter.endWait();
                     }
-                }
+                    break;
+                case KEY_RELEASED:
+                    byte keystroke = KEY_MAP.get(e.getKeyCode());
+                    if (e.getModifiersEx() == 0 && Utilities.isEqual(keystroke, currentKey)) {
+                        System.out.printf("Key Released: %s%n", Utilities.toHex(keystroke));
+                        currentKey = -1;
+                    }
+                    break;
             }
-            @Override
-            public void keyReleased(KeyEvent e) {
-//                if (e.modifiers == 0 && keyMap.containsKey(e.keyCode)) {
-//                    def keystroke = keyMap[e.keyCode]
-//                    println("Key Released: ${keystroke}")
-//                    synchronized (mutex) {
-//                        keys[keystroke] = false
-//                    }
-//                }
-            }
-        };
-        keyPressProvider.addKeyListener(keyListener);
+            return false;
+        });
     }
 
-    final int waitForKeyPress() {
-        while (true) {
-            synchronized (mutex) {
-                for (int i = 0; i < keys.length; i++) {
-                    boolean key = keys[i];
-                    if (key) {
-                       return i;
-                    }
-                }
-            }
+    // -------------------- Default Methods --------------------
+
+    final byte waitForKeyPress() {
+        if (currentKey == -1) {
+            waiter.waitForSignal();
         }
+        return currentKey;
     }
 
-    final boolean isPressed(int key) {
-        synchronized (mutex) {
-            return keys[key];
-        }
+    final boolean isPressed(byte key) {
+        return Utilities.isEqual(key, currentKey);
     }
 }

@@ -130,7 +130,6 @@ final class CPU {
         }
 
         OperationState state = new OperationState(programCounter, memory);
-        System.out.println(state);
         fireExecuteStateChanged(state);
 
         if (isEqual(state.getCurrentOpcode(), 0x0000)) {
@@ -201,13 +200,21 @@ final class CPU {
             bitLine[7] = ((byte) (spriteLine  & 0b0000_0001))       == 1; // bit 1 (LSB)
 
             for (int j = 0; j < bitLine.length; j++) {
-                boolean current = graphics[yCoord + i][xCoord + j];
+                int actualY = yCoord + i;
+                if (actualY >= graphics.length) {
+                    actualY = actualY - graphics.length;
+                }
+                int actualX = xCoord + j;
+                if (actualX >= graphics[actualY].length) {
+                    actualX = actualX - graphics[actualY].length;
+                }
+                boolean current = graphics[actualY][actualX];
                 boolean newValue = bitLine[j];
                 boolean flipped = current || newValue;
                 if (current != flipped) {
                     collision = true;
                 }
-                graphics[yCoord + i][xCoord + j] = newValue;
+                graphics[actualY][actualX] = newValue;
             }
         }
 
@@ -400,7 +407,7 @@ final class CPU {
                 break;
             case 0x0A:
                 // FX0A - A key press is awaited, and then stored in VX
-                vRegister[x] = (byte) keyboard.waitForKeyPress();
+                vRegister[x] = keyboard.waitForKeyPress();
                 break;
             case 0x15:
                 // FX15 - Sets the delay timer to VX
