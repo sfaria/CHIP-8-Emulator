@@ -54,7 +54,7 @@ final class CHIP8Emulator {
         Keyboard keyboard = new Keyboard();
         CPU cpu = new CPU(keyboard, delayClock);
 
-        boolean startWaiting = true;
+        boolean startWaiting = false;
         @SuppressWarnings("ConstantConditions")
         Breakpointer breakpointer = new Breakpointer(startWaiting);
         SwingUtilities.invokeAndWait(() -> setupGraphicsSystem(cpu, keyboard, breakpointer));
