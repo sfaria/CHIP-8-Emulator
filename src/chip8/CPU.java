@@ -210,11 +210,11 @@ final class CPU {
                 }
                 boolean current = graphics[actualY][actualX];
                 boolean newValue = bitLine[j];
-                boolean flipped = current || newValue;
+                boolean flipped = current ^ newValue;
                 if (current != flipped) {
                     collision = true;
                 }
-                graphics[actualY][actualX] = newValue;
+                graphics[actualY][actualX] = flipped;
             }
         }
 
