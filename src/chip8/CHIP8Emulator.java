@@ -50,10 +50,8 @@ final class CHIP8Emulator {
     // -------------------- Main Method --------------------
 
     public static void main(String[] args) throws Exception {
-        ClockSimulator cpuClock = new ClockSimulator(500);
-        ClockSimulator delayClock = new ClockSimulator(60);
         Keyboard keyboard = new Keyboard();
-        CPU cpu = new CPU(keyboard, delayClock);
+        CPU cpu = new CPU(keyboard);
 
         boolean startWaiting = false;
         @SuppressWarnings("ConstantConditions")
@@ -61,19 +59,21 @@ final class CHIP8Emulator {
         SwingUtilities.invokeAndWait(() -> setupGraphicsSystem(cpu, keyboard, breakpointer));
 
         cpu.initAndLoadRom("res/test_opcode.ch8");
-        breakpointer.waitUntilStepOver();
-        cpuClock.startClock();
-        delayClock.startClock();
+//        breakpointer.waitUntilStepOver();
 
-        AtomicBoolean keepExecuting = new AtomicBoolean(true);
-        while (keepExecuting.get()) {
-            cpuClock.withClockRegulation(() -> {
-                ExecutionResult result = cpu.emulateCycle();
-                switch (result) {
-                    case OK -> breakpointer.waitUntilStepOver();
-                    case END_PROGRAM, FATAL -> keepExecuting.set(false);
+        ClockSimulator cpuClock = new ClockSimulator(500);
+        cpuClock.withClockRegulation(() -> {
+            ExecutionResult result = cpu.emulateCycle();
+            switch (result) {
+                case OK -> {
+//                    breakpointer.waitUntilStepOver();
+                    return true;
                 }
-            });
-        }
+                case END_PROGRAM, FATAL -> {
+                    return false;
+                }
+            }
+            return false;
+        });
     }
 }

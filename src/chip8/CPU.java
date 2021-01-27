@@ -63,15 +63,22 @@ final class CPU {
 
     // general stuff
     private final EventListenerList ll = new EventListenerList();
-    private final ClockSimulator delayClock;
     private final Keyboard keyboard;
 
 
     // -------------------- Constructors --------------------
 
-    CPU(Keyboard keyboard, ClockSimulator delayClock) {
-        this.delayClock = Objects.requireNonNull(delayClock);
+    CPU(Keyboard keyboard) {
         this.keyboard = Objects.requireNonNull(keyboard);
+        ClockSimulator delayClock = new ClockSimulator(60);
+        delayClock.withClockRegulation(() -> {
+            delayTimer = (short) Math.max(0, delayTimer - 1);
+            if (soundTimer > 0) {
+                System.out.println("Beep!");
+            }
+            soundTimer = (short) Math.max(0, soundTimer - 1);
+            return true;
+        });
     }
 
     // -------------------- Default Methods --------------------
@@ -160,14 +167,6 @@ final class CPU {
         }
 
         fireExecuteStateChanged(state);
-        delayClock.withClockRegulation(() -> {
-            delayTimer = (short) Math.max(0, delayTimer - 1);
-            if (soundTimer > 0) {
-                System.out.println("Beep!");
-            }
-            soundTimer = (short) Math.max(0, soundTimer - 1);
-            fireExecuteStateChanged(state);
-        });
 
         if (renderFlag) {
             fireRenderNeeded();
@@ -431,11 +430,17 @@ final class CPU {
                 break;
             case 0x55:
                 // FX55 - Stores V0 to VX in memory starting at address I
-                System.arraycopy(vRegister, 0, memory, indexRegister, x);
+                for (int registerIndex = 0; registerIndex <= x; registerIndex++) {
+                    int memoryIndex = indexRegister + registerIndex;
+                    memory[memoryIndex] = vRegister[registerIndex];
+                }
                 break;
             case 0x65:
                 // FX65 - Fills V0 to VX with values from memory starting at address I
-                System.arraycopy(memory, indexRegister, vRegister, 0, x);
+                for (int registerIndex = 0; registerIndex <= x; registerIndex++) {
+                    int memoryIndex = indexRegister + registerIndex;
+                    vRegister[registerIndex] = memory[memoryIndex];
+                }
                 break;
             default:
                 throw new IllegalArgumentException();

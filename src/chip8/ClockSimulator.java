@@ -1,36 +1,40 @@
 package chip8;
 
+import java.sql.Time;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
+
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
  */
 final class ClockSimulator {
 
-    // -------------------- Private Variables --------------------
+    // -------------------- Private Variables ---------------
 
-    private final double nanoHerz;
-    private long lastTimeNanos;
+    private final Timer timer;
+    private final long periodInMs;
 
     // -------------------- Constructors --------------------
 
     ClockSimulator(int hzTickRate) {
-        this.nanoHerz = (1.0d / (double) hzTickRate) * 1e10-9;
-
+        this.periodInMs = (long) ((1d / (double) hzTickRate) * 1000);
+        this.timer = new Timer("%shz Timer".formatted(hzTickRate), true);
     }
 
     // -------------------- Default Methods --------------------
 
-    final void startClock() {
-        lastTimeNanos = System.nanoTime();
-    }
-
-    final void withClockRegulation(Runnable work) {
-        long now = System.nanoTime();
-        double diff = lastTimeNanos - now;
-        int operationsToDo = Math.max(1, (int) (diff / nanoHerz));
-        int operationCount = 0;
-        do {
-            work.run();
-        } while (++operationCount < operationsToDo);
+    final void withClockRegulation(BooleanSupplier work) {
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                boolean continueExecution = work.getAsBoolean();
+                if (!continueExecution) {
+                    timer.cancel();
+                }
+            }
+        }, 0L, periodInMs);
     }
 
 }
