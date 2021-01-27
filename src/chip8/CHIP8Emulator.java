@@ -45,6 +45,7 @@ final class CHIP8Emulator {
         frame.setResizable(false);
         frame.pack();
         frame.setVisible(true);
+        view.startRendering();
     }
 
     // -------------------- Main Method --------------------
@@ -59,7 +60,7 @@ final class CHIP8Emulator {
         Breakpointer breakpointer = new Breakpointer(startWaiting);
         SwingUtilities.invokeAndWait(() -> setupGraphicsSystem(cpu, keyboard, breakpointer));
 
-        cpu.initAndLoadRom("res/pong.rom");
+        cpu.initAndLoadRom("res/space_invaders.ch8");
 //        breakpointer.waitUntilStepOver();
 
         ClockSimulator cpuClock = new ClockSimulator(500);
