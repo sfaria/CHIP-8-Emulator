@@ -28,13 +28,13 @@ final class OperationState {
     OperationState(short programCounter, byte[] memory) {
         this.highByte = memory[programCounter];
         this.lowByte = memory[programCounter + 1];
-        this.currentOpcode = (short) ((((short) highByte) << 8) | ((short) lowByte));
+        this.currentOpcode = (short) ((((short) highByte) << 8) | (((short) lowByte)) & 0x00FF);
         this.nnn = (short) (currentOpcode & 0x0FFF);
         this.n = (byte) (currentOpcode & 0x000F);
         this.x = (byte) (highByte & 0x0F);
         this.y = (byte) ((lowByte & 0xF0) >> 4);
         this.highNibble = (byte) ((highByte & 0xF0) >> 4);
-        this.nextOpcode = (short) ((((short) memory[programCounter + 2]) << 8) | ((short) memory[programCounter + 3]));
+        this.nextOpcode = (short) ((((short) memory[programCounter + 2]) << 8) | (((short) memory[programCounter + 3])) & 0x00FF);
     }
 
     // -------------------- Default Methods --------------------
@@ -45,10 +45,6 @@ final class OperationState {
 
     final OperationInfo getNext() {
         return new OperationInfo(nextOpcode);
-    }
-
-    final byte getHighByte() {
-        return highByte;
     }
 
     final byte getLowByte() {

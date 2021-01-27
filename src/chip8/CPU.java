@@ -114,12 +114,22 @@ final class CPU {
         fireInit();
     }
 
-    final void emulateCycle() {
+    final ExecutionResult emulateCycle() {
         renderFlag = false;
+
+        // we hit the end
+        if (programCounter >= memory.length) {
+            return ExecutionResult.END_PROGRAM;
+        }
 
         OperationState state = new OperationState(programCounter, memory);
         System.out.println(state);
         fireExecuteStateChanged(state);
+
+        if (isEqual(state.getCurrentOpcode(), 0x0000)) {
+            // current operation is empty
+            return ExecutionResult.END_PROGRAM;
+        }
 
         programCounter += 2;
         byte lowByte = state.getLowByte();
@@ -130,82 +140,23 @@ final class CPU {
         byte y = state.getY();
 
         switch (state.getHighNibble()) {
-            case 0x0:
-                do0X(currentOpcode);
-                break;
-            case 0x1:
-                // 1NNN - Jumps to memory address NNN
-                programCounter = nnn; // probably should check that this is in bounds
-                break;
-            case 0x2:
-                // 2NNN - Jumps to subroutine at NNN
-                stack[stackPointer++] = programCounter;
-                programCounter = nnn; // probably should check that this is in bounds
-                break;
-            case 0x3:
-                // 3XNN - Skips the next instruction if VX equals NN
-                if (isEqual(vRegister[x], lowByte)) {
-                    programCounter += 2;
-                }
-                break;
-            case 0x4:
-                // 4XNN - Skips the next instruction if VX doesn't equal NN
-                if (!isEqual(vRegister[x], lowByte)) {
-                    programCounter += 2;
-                }
-                break;
-            case 0x5:
-                // 5XY0 - Skips the next instruction if VX equals VY.
-                if (isEqual(vRegister[x], vRegister[y])) {
-                    programCounter += 2;
-                }
-                break;
-            case 0x6:
-                // 6XNN - Sets VX to NN
-                vRegister[x] = lowByte;
-                break;
-            case 0x7:
-                // 7XNN - Adds NN to VX
-                vRegister[x] += lowByte;
-                break;
-            case 0x8:
-                do8XY(n, x, y);
-                break;
-            case 0x9:
-                // 9XY0 - Skips the next instruction if VX doesn't equal VY
-                if (!isEqual(vRegister[x], vRegister[y])) {
-                    programCounter += 2;
-                }
-                break;
-            case 0xA:
-                /*
-                 *  ANNN - LD I, addr
-                 *  Set I = nnn.
-                 *
-                 *  The value of register I is set to nnn.
-                 */
-                indexRegister = nnn;
-                break;
-            case 0xB:
-                // BNNN - Jumps to the address NNN plus V0
-                programCounter = (short) (nnn + (short) vRegister[0x0]);
-                break;
-            case 0xC:
-                // CXNN - Sets VX to a random number and NN
-                short randomShort = (short) rng.nextInt(255);
-                vRegister[x] = (byte) ((randomShort & 0x00FF) & lowByte);
-                break;
-            case 0xD:
-                do0XD(n, x, y);
-                break;
-            case 0xE:
-                doEX(n, x);
-                break;
-            case 0xF:
-                doFX(lowByte, x);
-                break;
-            default:
-                throw new IllegalArgumentException();
+            case 0x0 -> do0X(currentOpcode);
+            case 0x1 -> do1X(nnn);
+            case 0x2 -> do2X(nnn);
+            case 0x3 -> do3X(lowByte, x);
+            case 0x4 -> do4X(lowByte, x);
+            case 0x5 -> do5X(x, y);
+            case 0x6 -> do6X(lowByte, x);
+            case 0x7 -> do7X(lowByte, x);
+            case 0x8 -> do8XY(n, x, y);
+            case 0x9 -> do9X(x, y);
+            case 0xA -> doAX(nnn);
+            case 0xB -> doBX(nnn);
+            case 0xC -> doCX(lowByte, x);
+            case 0xD -> do0XD(n, x, y);
+            case 0xE -> doEX(n, x);
+            case 0xF -> doFX(lowByte, x);
+            default -> throw new IllegalArgumentException();
         }
 
         fireExecuteStateChanged(state);
@@ -221,6 +172,8 @@ final class CPU {
         if (renderFlag) {
             fireRenderNeeded();
         }
+
+        return ExecutionResult.OK;
     }
 
     // -------------------- Private Methods --------------------
@@ -281,6 +234,77 @@ final class CPU {
             System.out.println("0NNN called: Ignoring");
         }
     }
+
+    private void doCX(byte lowByte, byte x) {
+        // CXNN - Sets VX to a random number and NN
+        short randomShort = (short) rng.nextInt(255);
+        vRegister[x] = (byte) ((randomShort & 0x00FF) & lowByte);
+    }
+
+    private void doBX(short nnn) {
+        // BNNN - Jumps to the address NNN plus V0
+        programCounter = (short) (nnn + (short) vRegister[0x0]);
+    }
+
+    private void doAX(short nnn) {
+        /*
+         *  ANNN - LD I, addr
+         *  Set I = nnn.
+         *
+         *  The value of register I is set to nnn.
+         */
+        indexRegister = nnn;
+    }
+
+    private void do7X(byte lowByte, byte x) {
+        // 7XNN - Adds NN to VX
+        vRegister[x] += lowByte;
+    }
+
+    private void do9X(byte x, byte y) {
+        // 9XY0 - Skips the next instruction if VX doesn't equal VY
+        if (!isEqual(vRegister[x], vRegister[y])) {
+            programCounter += 2;
+        }
+    }
+
+    private void do6X(byte lowByte, byte x) {
+        // 6XNN - Sets VX to NN
+        vRegister[x] = lowByte;
+    }
+
+    private void do5X(byte x, byte y) {
+        // 5XY0 - Skips the next instruction if VX equals VY.
+        if (isEqual(vRegister[x], vRegister[y])) {
+            programCounter += 2;
+        }
+    }
+
+    private void do4X(byte lowByte, byte x) {
+        // 4XNN - Skips the next instruction if VX doesn't equal NN
+        if (!isEqual(vRegister[x], lowByte)) {
+            programCounter += 2;
+        }
+    }
+
+    private void do3X(byte lowByte, byte x) {
+        // 3XNN - Skips the next instruction if VX equals NN
+        if (isEqual(vRegister[x], lowByte)) {
+            programCounter += 2;
+        }
+    }
+
+    private void do2X(short nnn) {
+        // 2NNN - Jumps to subroutine at NNN
+        stack[stackPointer++] = programCounter;
+        programCounter = nnn; // probably should check that this is in bounds
+    }
+
+    private void do1X(short nnn) {
+        // 1NNN - Jumps to memory address NNN
+        programCounter = nnn; // probably should check that this is in bounds
+    }
+
 
     @SuppressWarnings("EnhancedSwitchMigration")
     private void do8XY(short n, short x, short y) {
@@ -445,9 +469,4 @@ final class CPU {
         }
     }
 
-    public static void arrayCopy(boolean[][] src, boolean[][] dest) {
-        for (int i = 0; i < src.length; i++) {
-            System.arraycopy(src[i], 0, dest[i], 0, src[i].length);
-        }
-    }
 }

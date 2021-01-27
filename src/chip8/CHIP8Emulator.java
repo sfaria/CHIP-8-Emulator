@@ -2,7 +2,8 @@ package chip8;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import java.awt.BorderLayout;
+import java.awt.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  *
@@ -15,7 +16,7 @@ final class CHIP8Emulator {
     static {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (ClassNotFoundException | UnsupportedLookAndFeelException | IllegalAccessException | InstantiationException ignored) {}
+        } catch (Exception ignored) {}
     }
 
     // -------------------- Private Static Methods --------------------
@@ -64,11 +65,14 @@ final class CHIP8Emulator {
         cpuClock.startClock();
         delayClock.startClock();
 
-        //noinspection InfiniteLoopStatement
-        while (true) {
+        AtomicBoolean keepExecuting = new AtomicBoolean(true);
+        while (keepExecuting.get()) {
             cpuClock.withClockRegulation(() -> {
-                cpu.emulateCycle();
-                breakpointer.waitUntilStepOver();
+                ExecutionResult result = cpu.emulateCycle();
+                switch (result) {
+                    case OK -> breakpointer.waitUntilStepOver();
+                    case END_PROGRAM, FATAL -> keepExecuting.set(false);
+                }
             });
         }
     }
