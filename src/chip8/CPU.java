@@ -68,15 +68,17 @@ final class CPU {
 
     // -------------------- Constructors --------------------
 
-    CPU(Keyboard keyboard) {
+    CPU(Keyboard keyboard, PCSpeaker speaker) {
         this.keyboard = Objects.requireNonNull(keyboard);
         ClockSimulator delayClock = new ClockSimulator(60);
         delayClock.withClockRegulation(() -> {
             delayTimer = (short) Math.max(0, delayTimer - 1);
-            if (soundTimer > 0) {
-                System.out.println("Beep!");
-            }
             soundTimer = (short) Math.max(0, soundTimer - 1);
+            if (soundTimer == 0) {
+                speaker.endBeep();
+            } else {
+                speaker.startBeepIfNotStarted();
+            }
             return true;
         });
     }
