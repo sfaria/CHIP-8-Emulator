@@ -1,4 +1,4 @@
-package chip8;
+package chip8.hardware;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
  */
-final class PCSpeaker implements AutoCloseable {
+public final class PCSpeaker implements AutoCloseable {
 
     // -------------------- Private Statics --------------------
 
@@ -29,7 +29,7 @@ final class PCSpeaker implements AutoCloseable {
 
     // -------------------- Constructors --------------------
 
-    PCSpeaker(double initialVolume) throws LineUnavailableException {
+    public PCSpeaker(double initialVolume) throws LineUnavailableException {
         this.volume = new AtomicReference<>(initialVolume);
         AudioFormat audioFormat = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
         this.line = AudioSystem.getSourceDataLine(audioFormat);
@@ -43,9 +43,9 @@ final class PCSpeaker implements AutoCloseable {
         line.close();
     }
 
-    // -------------------- Default Methods --------------------
+    // -------------------- Public Methods --------------------
 
-    final void startBeepIfNotStarted() {
+    public final void startBeepIfNotStarted() {
         if (beeping.compareAndSet(false, true)) {
             ex.execute(() -> {
                 double vol = volume.get();
@@ -63,7 +63,7 @@ final class PCSpeaker implements AutoCloseable {
         }
     }
 
-    final void endBeep() {
+    public final void endBeep() {
         line.stop();
         line.flush();
         beeping.set(false);

@@ -1,4 +1,4 @@
-package chip8;
+package chip8.hardware;
 
 import java.util.EventListener;
 

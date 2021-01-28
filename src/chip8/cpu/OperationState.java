@@ -1,11 +1,13 @@
-package chip8;
+package chip8.cpu;
 
-import static chip8.Utilities.toHex;
+import chip8.ui.OperationInfo;
+
+import static chip8.util.Utilities.toHex;
 
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
  */
-final class OperationState {
+public final class OperationState {
 
     // -------------------- Private Variables --------------------
 
@@ -37,15 +39,17 @@ final class OperationState {
         this.nextOpcode = (short) ((((short) memory[programCounter + 2]) << 8) | (((short) memory[programCounter + 3])) & 0x00FF);
     }
 
-    // -------------------- Default Methods --------------------
+    // -------------------- Public Methods --------------------
 
-    final OperationInfo getCurrent() {
+    public final OperationInfo getCurrent() {
         return new OperationInfo(currentOpcode);
     }
 
-    final OperationInfo getNext() {
+    public final OperationInfo getNext() {
         return new OperationInfo(nextOpcode);
     }
+
+    // -------------------- Default Methods --------------------
 
     final byte getLowByte() {
         return lowByte;

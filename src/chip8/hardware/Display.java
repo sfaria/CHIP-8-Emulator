@@ -1,34 +1,33 @@
-package chip8;
+package chip8.hardware;
 
+import chip8.cpu.CPU;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferStrategy;
-import java.awt.image.BufferedImage;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  *
  * @author Scott Faria <scott.faria@protonmail.com>
  */
-final class Display extends Canvas {
+public final class Display extends Canvas {
 
     // -------------------- Private Variables --------------------
 
     private final int width = 64;
     private final int height = 32;
     private final int scaleFactor = 10;
+    private final Toolkit toolkit;
 
     private boolean[][] memory = new boolean[height][width];
 
     // -------------------- Constructors --------------------
 
-    Display(CPU cpu) {
+    public Display(CPU cpu) {
+        this.toolkit = Toolkit.getDefaultToolkit();
         cpu.addRenderListener(graphicsMemory -> {
             try {
                 SwingUtilities.invokeAndWait(() -> this.memory = graphicsMemory);
@@ -43,7 +42,7 @@ final class Display extends Canvas {
 
     // -------------------- Default Methods --------------------
 
-    final void startRendering() {
+    public final void startRendering() {
         createBufferStrategy(2);
         Timer timer = new Timer("render-timer", false);
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -82,7 +81,7 @@ final class Display extends Canvas {
             }
 
             strategy.show();
-            Toolkit.getDefaultToolkit().sync();
+            toolkit.sync();
         } finally {
             g2d.dispose();
         }

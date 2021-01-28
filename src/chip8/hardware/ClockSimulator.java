@@ -1,4 +1,4 @@
-package chip8;
+package chip8.hardware;
 
 import java.sql.Time;
 import java.util.Timer;
@@ -9,7 +9,7 @@ import java.util.function.BooleanSupplier;
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
  */
-final class ClockSimulator {
+public final class ClockSimulator {
 
     // -------------------- Private Variables ---------------
 
@@ -18,14 +18,14 @@ final class ClockSimulator {
 
     // -------------------- Constructors --------------------
 
-    ClockSimulator(int hzTickRate) {
+    public ClockSimulator(int hzTickRate) {
         this.periodInMs = (long) ((1d / (double) hzTickRate) * 1000);
         this.timer = new Timer("%shz Timer".formatted(hzTickRate), true);
     }
 
-    // -------------------- Default Methods --------------------
+    // -------------------- Public Methods --------------------
 
-    final void withClockRegulation(BooleanSupplier work) {
+    public final void withClockRegulation(BooleanSupplier work) {
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {

@@ -1,18 +1,27 @@
-package chip8;
+package chip8.cpu;
+
+import chip8.hardware.ClockSimulator;
+import chip8.hardware.Keyboard;
+import chip8.hardware.PCSpeaker;
+import chip8.hardware.RenderListener;
+import chip8.ui.DebuggerListener;
+import chip8.ui.MachineState;
 
 import javax.swing.event.EventListenerList;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.Objects;
+import java.util.Random;
 
-import static chip8.Utilities.*;
+import static chip8.util.Utilities.arrayCopy;
+import static chip8.util.Utilities.isEqual;
 
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
  */
-final class CPU {
+public final class CPU {
 
     // -------------------- Private Statics --------------------
 
@@ -68,7 +77,7 @@ final class CPU {
 
     // -------------------- Constructors --------------------
 
-    CPU(Keyboard keyboard, PCSpeaker speaker) {
+    public CPU(Keyboard keyboard, PCSpeaker speaker) {
         this.keyboard = Objects.requireNonNull(keyboard);
         ClockSimulator delayClock = new ClockSimulator(60);
         delayClock.withClockRegulation(() -> {
@@ -83,19 +92,19 @@ final class CPU {
         });
     }
 
-    // -------------------- Default Methods --------------------
+    // -------------------- Public Methods --------------------
 
-    final void addDebuggerListener(DebuggerListener l) {
+    public final void addDebuggerListener(DebuggerListener l) {
         Objects.requireNonNull(l);
         ll.add(DebuggerListener.class, l);
     }
 
-    final void addRenderListener(RenderListener l) {
+    public final void addRenderListener(RenderListener l) {
         Objects.requireNonNull(l);
         ll.add(RenderListener.class, l);
     }
 
-    final void initAndLoadRom(String romLocation) throws IOException {
+    public final void initAndLoadRom(String romLocation) throws IOException {
         File romFile = new File(romLocation);
         if (!romFile.exists()) {
             throw new FileNotFoundException("File '%s' not found!".formatted(romLocation));
@@ -123,7 +132,7 @@ final class CPU {
         fireInit();
     }
 
-    final ExecutionResult emulateCycle() {
+    public final ExecutionResult emulateCycle() {
         renderFlag = false;
 
         // we hit the end

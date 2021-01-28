@@ -1,4 +1,4 @@
-package chip8;
+package chip8.cpu;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -6,7 +6,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Scott Faria <scott.faria@protonmail.com>
  */
-final class Breakpointer {
+public final class Breakpointer {
 
     // -------------------- Private Variables --------------------
 
@@ -18,14 +18,14 @@ final class Breakpointer {
 
     // -------------------- Constructors --------------------
 
-    Breakpointer(boolean startWait) {
+    public Breakpointer(boolean startWait) {
         this.wait = startWait;
         this.isWaiting = startWait;
     }
 
-    // -------------------- Default Methods --------------------
+    // -------------------- Public Methods --------------------
 
-    final void endWait() {
+    public final void endWait() {
         lock.lock();
         try {
             this.isWaiting = false;
@@ -35,7 +35,7 @@ final class Breakpointer {
         }
     }
 
-    final void setShouldWait(boolean shouldWait) {
+    public final void setShouldWait(boolean shouldWait) {
         lock.lock();
         try {
             this.wait = shouldWait;
@@ -44,7 +44,7 @@ final class Breakpointer {
         }
     }
 
-    final boolean isWaiting() {
+    public final boolean isWaiting() {
         lock.lock();
         try {
             return wait;
@@ -53,7 +53,7 @@ final class Breakpointer {
         }
     }
 
-    final void waitForSignal() {
+    public final void waitForSignal() {
         lock.lock();
         if (!wait) {
             return;

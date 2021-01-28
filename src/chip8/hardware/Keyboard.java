@@ -1,9 +1,9 @@
-package chip8;
+package chip8.hardware;
 
-import javax.swing.JFrame;
+import chip8.cpu.Breakpointer;
+import chip8.util.Utilities;
+
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,7 +12,7 @@ import static java.awt.event.KeyEvent.*;
  *
  * @author Scott Faria <scott.faria@protonmailcom>
  */
-final class Keyboard {
+public final class Keyboard {
 
     // -------------------- Private Statics --------------------
 
@@ -42,7 +42,7 @@ final class Keyboard {
 
     // -------------------- Constructors --------------------
 
-    Keyboard() {
+    public Keyboard() {
         KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
         manager.addKeyEventDispatcher(e -> {
             switch (e.getID()) {
@@ -69,14 +69,14 @@ final class Keyboard {
 
     // -------------------- Default Methods --------------------
 
-    final byte waitForKeyPress() {
+    public final byte waitForKeyPress() {
         if (currentKey == -1) {
             waiter.waitForSignal();
         }
         return currentKey;
     }
 
-    final boolean isPressed(byte key) {
+    public final boolean isPressed(byte key) {
         return Utilities.isEqual(key, currentKey);
     }
 }

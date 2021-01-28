@@ -1,9 +1,9 @@
-package chip8;
+package chip8.cpu;
 
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
  */
-enum ExecutionResult {
+public enum ExecutionResult {
     OK,
     END_PROGRAM,
     FATAL
