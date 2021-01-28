@@ -82,13 +82,13 @@ final class CHIP8Emulator {
             }
 
             @Override
-            public void shouldWaitChanged(boolean shouldWait) {
-                EX.submit(() -> breakpointer.setShouldWait(shouldWait));
+            public void setVolume(double volume) {
+                Utilities.invokeInBackground(() -> speaker.setVolume(volume));
             }
 
             @Override
-            public void setVolume(double volume) {
-                Utilities.invokeInBackground(() -> speaker.setVolume(volume));
+            public void shouldWaitChanged(boolean shouldWait) {
+                EX.submit(() -> breakpointer.setShouldWait(shouldWait));
             }
 
             @Override
