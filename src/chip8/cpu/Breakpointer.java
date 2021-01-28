@@ -44,14 +44,6 @@ public final class Breakpointer {
         }
     }
 
-    public final boolean isWaiting() {
-        lock.lock();
-        try {
-            return wait;
-        } finally {
-            lock.unlock();
-        }
-    }
 
     public final void waitForSignal() {
         lock.lock();

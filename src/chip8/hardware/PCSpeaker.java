@@ -18,7 +18,7 @@ public final class PCSpeaker implements AutoCloseable {
 
     private static final float SAMPLE_RATE = 8000f;
     private static final int HZ = 226;
-    private static final int MSEC_PERIOD = 1000;
+    private static final int MSEC_PERIOD = 500;
 
     // -------------------- Private Variables --------------------
 
@@ -45,6 +45,11 @@ public final class PCSpeaker implements AutoCloseable {
 
     // -------------------- Public Methods --------------------
 
+    public final void setVolume(double volume) {
+        volume = Math.min(Math.max(0, volume), 1.0d);
+        this.volume.set(volume);
+    }
+
     public final void startBeepIfNotStarted() {
         if (beeping.compareAndSet(false, true)) {
             ex.execute(() -> {
@@ -64,9 +69,10 @@ public final class PCSpeaker implements AutoCloseable {
     }
 
     public final void endBeep() {
-        line.stop();
-        line.flush();
-        beeping.set(false);
+        if (beeping.compareAndSet(true, false)) {
+            line.stop();
+            line.flush();
+        }
     }
 
     // -------------------- Private Statics --------------------

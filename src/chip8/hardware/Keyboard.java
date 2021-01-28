@@ -48,9 +48,7 @@ public final class Keyboard {
             switch (e.getID()) {
                 case KEY_PRESSED:
                     if (e.getModifiersEx() == 0 && KEY_MAP.containsKey(e.getKeyCode())) {
-                        byte keystroke = KEY_MAP.get(e.getKeyCode());
-                        System.out.printf("Key Pressed: %s%n", Utilities.toHex(keystroke));
-                        currentKey = keystroke;
+                        currentKey = KEY_MAP.get(e.getKeyCode());
                         waiter.endWait();
                     }
                     break;
@@ -58,7 +56,6 @@ public final class Keyboard {
                     Byte keystroke = KEY_MAP.get(e.getKeyCode());
                     byte key = keystroke == null ? -1 : keystroke;
                     if (e.getModifiersEx() == 0 && Utilities.isEqual(key, currentKey)) {
-                        System.out.printf("Key Released: %s%n", Utilities.toHex(key));
                         currentKey = -1;
                     }
                     break;

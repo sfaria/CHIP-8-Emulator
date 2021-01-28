@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
 
 import static chip8.util.Utilities.arrayCopy;
 import static chip8.util.Utilities.isEqual;
@@ -72,24 +73,17 @@ public final class CPU {
 
     // general stuff
     private final EventListenerList ll = new EventListenerList();
+    private final ExecutorService ex;
     private final Keyboard keyboard;
+    private final PCSpeaker speaker;
 
 
     // -------------------- Constructors --------------------
 
-    public CPU(Keyboard keyboard, PCSpeaker speaker) {
+    public CPU(ExecutorService ex, Keyboard keyboard, PCSpeaker speaker) {
+        this.ex = ex;
         this.keyboard = Objects.requireNonNull(keyboard);
-        ClockSimulator delayClock = new ClockSimulator(60);
-        delayClock.withClockRegulation(() -> {
-            delayTimer = (short) Math.max(0, delayTimer - 1);
-            soundTimer = (short) Math.max(0, soundTimer - 1);
-            if (soundTimer == 0) {
-                speaker.endBeep();
-            } else {
-                speaker.startBeepIfNotStarted();
-            }
-            return true;
-        });
+        this.speaker = speaker;
     }
 
     // -------------------- Public Methods --------------------
@@ -104,10 +98,9 @@ public final class CPU {
         ll.add(RenderListener.class, l);
     }
 
-    public final void initAndLoadRom(String romLocation) throws IOException {
-        File romFile = new File(romLocation);
+    public final void initAndLoadRom(File romFile) throws IOException {
         if (!romFile.exists()) {
-            throw new FileNotFoundException("File '%s' not found!".formatted(romLocation));
+            throw new FileNotFoundException("File '%s' not found!".formatted(romFile.toPath()));
         }
 
         this.programCounter = 512;
@@ -129,6 +122,19 @@ public final class CPU {
         byte[] fileBytes = Files.readAllBytes(romFile.toPath());
         assert romFile.length() < memory.length - programCounter; // make sure we don't overrun memory
         System.arraycopy(fileBytes, 0, memory, programCounter, fileBytes.length);
+
+        ClockSimulator delayClock = new ClockSimulator(60, ex);
+        delayClock.withClockRegulation(() -> {
+            delayTimer = (short) Math.max(0, delayTimer - 1);
+            soundTimer = (short) Math.max(0, soundTimer - 1);
+            if (soundTimer == 0) {
+                speaker.endBeep();
+            } else {
+                speaker.startBeepIfNotStarted();
+            }
+            return true;
+        });
+
         fireInit();
     }
 
