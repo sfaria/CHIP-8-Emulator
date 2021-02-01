@@ -35,8 +35,6 @@ final class CHIP8Emulator {
         } catch (Exception ignored) {}
     }
 
-    private static final ExecutorService EX = Executors.newSingleThreadExecutor();
-
     // -------------------- Private Static Methods --------------------
 
     private static void setupGraphicsSystem(CPU cpu, ControlsListener listener) {
@@ -67,12 +65,33 @@ final class CHIP8Emulator {
         view.startRendering();
     }
 
+    private static void runRom(CPU cpu, File romFile) {
+        try {
+            cpu.initAndLoadRom(romFile);
+            ClockSimulator cpuClock = new ClockSimulator(500);
+            cpuClock.withClockRegulation(() -> {
+                ExecutionResult result = cpu.emulateCycle();
+                switch (result) {
+                    case OK -> {
+                        return true;
+                    }
+                    case END_PROGRAM, FATAL -> {
+                        return false;
+                    }
+                }
+                return false;
+            });
+        } catch (IOException e) {
+            throw new RuntimeException("Unexpected Exception.", e);
+        }
+    }
+
     // -------------------- Main Method --------------------
 
     public static void main(String[] args) throws Exception {
         Keyboard keyboard = new Keyboard();
         PCSpeaker speaker = new PCSpeaker(0.5d);
-        CPU cpu = new CPU(EX, keyboard, speaker);
+        CPU cpu = new CPU(keyboard, speaker);
 
         Breakpointer breakpointer = new Breakpointer(false);
         ControlsListener listener = new ControlsListener() {
@@ -88,33 +107,12 @@ final class CHIP8Emulator {
 
             @Override
             public void shouldWaitChanged(boolean shouldWait) {
-                EX.submit(() -> breakpointer.setShouldWait(shouldWait));
+                Utilities.invokeInBackground(() -> cpu.setShouldWait(shouldWait));
             }
 
             @Override
             public void romSelected(File romFile) {
-                EX.submit(() -> {
-                    try {
-                        cpu.initAndLoadRom(romFile);
-                        ClockSimulator cpuClock = new ClockSimulator(500, EX);
-                        cpuClock.withClockRegulation(() -> {
-                            breakpointer.waitForSignal();
-                            ExecutionResult result = cpu.emulateCycle();
-                            switch (result) {
-                                case OK -> {
-                                    return true;
-                                }
-                                case END_PROGRAM, FATAL -> {
-                                    return false;
-                                }
-                            }
-                            return false;
-                        });
-                    } catch (IOException e) {
-                        throw new RuntimeException("Unexpected Exception.", e);
-                    }
-                });
-
+                Utilities.invokeInBackground(() -> runRom(cpu, romFile));
             }
         };
 

@@ -14,7 +14,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static chip8.util.Utilities.arrayCopy;
 import static chip8.util.Utilities.isEqual;
@@ -73,15 +77,14 @@ public final class CPU {
 
     // general stuff
     private final EventListenerList ll = new EventListenerList();
-    private final ExecutorService ex;
     private final Keyboard keyboard;
     private final PCSpeaker speaker;
-
+    private final ExecutorService ex = Executors.newSingleThreadExecutor();
+    private final Breakpointer breakpointer = new Breakpointer(false);
 
     // -------------------- Constructors --------------------
 
-    public CPU(ExecutorService ex, Keyboard keyboard, PCSpeaker speaker) {
-        this.ex = ex;
+    public CPU(Keyboard keyboard, PCSpeaker speaker) {
         this.keyboard = Objects.requireNonNull(keyboard);
         this.speaker = speaker;
     }
@@ -98,97 +101,116 @@ public final class CPU {
         ll.add(RenderListener.class, l);
     }
 
+    public final void setShouldWait(boolean shouldWait) {}
+
     public final void initAndLoadRom(File romFile) throws IOException {
-        if (!romFile.exists()) {
-            throw new FileNotFoundException("File '%s' not found!".formatted(romFile.toPath()));
-        }
-
-        this.programCounter = 512;
-        this.indexRegister = 0;
-        this.stackPointer = 0;
-        this.stack = new short[16];
-        this.memory = new byte[4096];
-        this.vRegister = new byte[16];
-        this.graphics = new boolean[32][64];
-        this.delayTimer = 0;
-        this.soundTimer = 0;
-        this.delayTimer = 0;
-        this.soundTimer = 0;
-
-        // load the system font set
-        System.arraycopy(FONT_SET, 0, this.memory, 0, FONT_SET.length);
-
-        // load the file contents into memory
-        byte[] fileBytes = Files.readAllBytes(romFile.toPath());
-        assert romFile.length() < memory.length - programCounter; // make sure we don't overrun memory
-        System.arraycopy(fileBytes, 0, memory, programCounter, fileBytes.length);
-
-        ClockSimulator delayClock = new ClockSimulator(60, ex);
-        delayClock.withClockRegulation(() -> {
-            delayTimer = (short) Math.max(0, delayTimer - 1);
-            soundTimer = (short) Math.max(0, soundTimer - 1);
-            if (soundTimer == 0) {
-                speaker.endBeep();
-            } else {
-                speaker.startBeepIfNotStarted();
+        ex.submit(() -> {
+            if (!romFile.exists()) {
+                throw new RuntimeException("File '%s' not found!".formatted(romFile.toPath()));
             }
-            return true;
+
+            this.programCounter = 512;
+            this.indexRegister = 0;
+            this.stackPointer = 0;
+            this.stack = new short[16];
+            this.memory = new byte[4096];
+            this.vRegister = new byte[16];
+            this.graphics = new boolean[32][64];
+            this.delayTimer = 0;
+            this.soundTimer = 0;
+            this.delayTimer = 0;
+            this.soundTimer = 0;
+
+            // load the system font set
+            System.arraycopy(FONT_SET, 0, this.memory, 0, FONT_SET.length);
+
+            // load the file contents into memory
+            byte[] fileBytes = new byte[0];
+            try {
+                fileBytes = Files.readAllBytes(romFile.toPath());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            assert romFile.length() < memory.length - programCounter; // make sure we don't overrun memory
+            System.arraycopy(fileBytes, 0, memory, programCounter, fileBytes.length);
+
+            fireInit();
         });
 
-        fireInit();
+        ClockSimulator delayClock = new ClockSimulator(60);
+        delayClock.withClockRegulation(() -> {
+            ex.submit(() -> {
+                delayTimer = (short) Math.max(0, delayTimer - 1);
+                soundTimer = (short) Math.max(0, soundTimer - 1);
+                if (soundTimer == 0) {
+                    speaker.endBeep();
+                } else {
+                    speaker.startBeepIfNotStarted();
+                }
+            });
+            return true;
+        });
     }
 
     public final ExecutionResult emulateCycle() {
-        renderFlag = false;
+        Future<ExecutionResult> f = ex.submit(() -> {
+            renderFlag = false;
 
-        // we hit the end
-        if (programCounter >= memory.length) {
-            return ExecutionResult.END_PROGRAM;
+            // we hit the end
+            if (programCounter >= memory.length) {
+                return ExecutionResult.END_PROGRAM;
+            }
+
+            OperationState state = new OperationState(programCounter, memory);
+            fireExecuteStateChanged(state);
+
+            if (isEqual(state.getCurrentOpcode(), 0x0000)) {
+                // current operation is empty
+                return ExecutionResult.END_PROGRAM;
+            }
+
+            programCounter += 2;
+            byte lowByte = state.getLowByte();
+            short currentOpcode = state.getCurrentOpcode();
+            short nnn = state.getNNN();
+            byte n = state.getN();
+            byte x = state.getX();
+            byte y = state.getY();
+
+            switch (state.getHighNibble()) {
+                case 0x0 -> do0X(currentOpcode);
+                case 0x1 -> do1X(nnn);
+                case 0x2 -> do2X(nnn);
+                case 0x3 -> do3X(lowByte, x);
+                case 0x4 -> do4X(lowByte, x);
+                case 0x5 -> do5X(x, y);
+                case 0x6 -> do6X(lowByte, x);
+                case 0x7 -> do7X(lowByte, x);
+                case 0x8 -> do8XY(n, x, y);
+                case 0x9 -> do9X(x, y);
+                case 0xA -> doAX(nnn);
+                case 0xB -> doBX(nnn);
+                case 0xC -> doCX(lowByte, x);
+                case 0xD -> do0XD(n, x, y);
+                case 0xE -> doEX(n, x);
+                case 0xF -> doFX(lowByte, x);
+                default -> throw new IllegalArgumentException();
+            }
+
+            fireExecuteStateChanged(state);
+
+            if (renderFlag) {
+                fireRenderNeeded();
+            }
+
+            return ExecutionResult.OK;
+        });
+
+        try {
+            return f.get();
+        } catch (InterruptedException | ExecutionException e) {
+            return ExecutionResult.FATAL;
         }
-
-        OperationState state = new OperationState(programCounter, memory);
-        fireExecuteStateChanged(state);
-
-        if (isEqual(state.getCurrentOpcode(), 0x0000)) {
-            // current operation is empty
-            return ExecutionResult.END_PROGRAM;
-        }
-
-        programCounter += 2;
-        byte lowByte = state.getLowByte();
-        short currentOpcode = state.getCurrentOpcode();
-        short nnn = state.getNNN();
-        byte n = state.getN();
-        byte x = state.getX();
-        byte y = state.getY();
-
-        switch (state.getHighNibble()) {
-            case 0x0 -> do0X(currentOpcode);
-            case 0x1 -> do1X(nnn);
-            case 0x2 -> do2X(nnn);
-            case 0x3 -> do3X(lowByte, x);
-            case 0x4 -> do4X(lowByte, x);
-            case 0x5 -> do5X(x, y);
-            case 0x6 -> do6X(lowByte, x);
-            case 0x7 -> do7X(lowByte, x);
-            case 0x8 -> do8XY(n, x, y);
-            case 0x9 -> do9X(x, y);
-            case 0xA -> doAX(nnn);
-            case 0xB -> doBX(nnn);
-            case 0xC -> doCX(lowByte, x);
-            case 0xD -> do0XD(n, x, y);
-            case 0xE -> doEX(n, x);
-            case 0xF -> doFX(lowByte, x);
-            default -> throw new IllegalArgumentException();
-        }
-
-        fireExecuteStateChanged(state);
-
-        if (renderFlag) {
-            fireRenderNeeded();
-        }
-
-        return ExecutionResult.OK;
     }
 
     // -------------------- Private Methods --------------------
@@ -201,9 +223,10 @@ public final class CPU {
         // coordinates of the display, it wraps around to the opposite side of the screen. See instruction 8xy3 for more
         // information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
 
-        boolean collision = false;
-        int xCoord = vRegister[x];
-        int yCoord = vRegister[y];
+        int xCoord = vRegister[x] % 64;
+        int yCoord = vRegister[y] % 32;
+        vRegister[0xF] = 0;
+
         for (int i = 0; i < n; i++) {
             byte spriteLine =  memory[indexRegister + i];
             boolean[] bitLine = new boolean[8];
@@ -219,28 +242,22 @@ public final class CPU {
             for (int j = 0; j < bitLine.length; j++) {
                 int actualY = yCoord + i;
                 if (actualY >= graphics.length) {
-                    actualY = actualY - graphics.length;
+                    continue;
                 }
                 int actualX = xCoord + j;
                 if (actualX >= graphics[actualY].length) {
-                    actualX = actualX - graphics[actualY].length;
+                    continue;
                 }
                 boolean current = graphics[actualY][actualX];
                 boolean newValue = bitLine[j];
-                boolean flipped = current ^ newValue;
-                if (current != flipped) {
-                    collision = true;
+                if (current && newValue) {
+                    graphics[actualY][actualX] = false;
+                    vRegister[0xF] = 1; // collision
+                } else if (!current) {
+                    graphics[actualY][actualX] = newValue;
                 }
-                graphics[actualY][actualX] = flipped;
             }
         }
-
-        if (collision) {
-            vRegister[0xF] = 1;
-        } else {
-            vRegister[0xF] = 0;
-        }
-
         renderFlag = true;
     }
 
