@@ -387,10 +387,10 @@ public final class CPU {
                 vRegister[x] = (byte) ((short) vRegister[y] - ((short) vRegister[x]));
                 break;
             case 0xE:
-                // 8XYE - Store the value of register VY shifted left one bit in register VX
+                // 8XYE - Store the value of register VX shifted left one bit in register VX
                 //Set register VF to the most significant bit prior to the shift
-                vRegister[0xF] = (byte) ((vRegister[y] >> 7) & 0b0000_0001);
-                vRegister[x] = (byte) ((vRegister[y] << 1) & 0x0000FFFF);
+                vRegister[0xF] = (byte) ((vRegister[x] & 0x00FF) >> 7);
+                vRegister[x] = (byte) (vRegister[x] << 1);
                 break;
             default:
                 throw new IllegalArgumentException();
