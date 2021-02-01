@@ -12,7 +12,12 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Hashtable;
 import java.util.Objects;
 
@@ -161,7 +166,7 @@ public final class ControlsView extends JComponent {
     // -------------------- Inner Classes --------------------
 
     private final class OpenFileAction implements ActionListener {
-        private File lastDirectoryOpened;
+        private File lastDirectoryOpened = getSavedLocation();
 
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -174,8 +179,59 @@ public final class ControlsView extends JComponent {
                 File selectedFile = fileChooser.getSelectedFile();
                 if (selectedFile != null && selectedFile.exists()) {
                     lastDirectoryOpened = selectedFile.getParentFile();
+                    writeSavedLocation(lastDirectoryOpened);
                 }
                 fireFileOpened(selectedFile);
+            }
+        }
+
+        private File getSavedLocation() {
+            if (lastDirectoryOpened == null) {
+                File config = Path.of(System.getenv("LOCALAPPDATA"))
+                        .resolve("chip8")
+                        .resolve("last_opened")
+                        .toAbsolutePath()
+                        .toFile();
+                if (!config.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    config.getParentFile().mkdirs();
+                    return null;
+                } else {
+                    File dir = readDir(config);
+                    if (dir == null || !dir.exists()) {
+                        return null;
+                    }
+                    lastDirectoryOpened = dir;
+                }
+            }
+            return lastDirectoryOpened;
+        }
+
+        private void writeSavedLocation(File dir) {
+            File config = Path.of(System.getenv("LOCALAPPDATA"))
+                    .resolve("chip8")
+                    .resolve("last_opened")
+                    .toAbsolutePath()
+                    .toFile();
+
+            if (!config.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                config.getParentFile().mkdirs();
+            }
+
+            try {
+                Files.writeString(config.toPath(), dir.getAbsolutePath());
+            } catch (IOException ignore) {}
+        }
+
+        private File readDir(File config) {
+            try {
+                return Files.readAllLines(config.toPath()).stream()
+                        .findFirst()
+                        .map(File::new)
+                        .orElse(null);
+            } catch (IOException ignore) {
+                return null;
             }
         }
     }

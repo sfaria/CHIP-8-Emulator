@@ -350,7 +350,7 @@ public final class CPU {
                 break;
             case 0x4:
                 // 8XY4 - Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't
-                int result = ((int) vRegister[x]) + ((int) vRegister[y]);
+                short result = (short) ((((short) vRegister[x]) & 0x00FF) + (((short) vRegister[y]) & 0x00FF));
                 if (result > 255) {
                     vRegister[0xF] = 1;
                 } else {
@@ -387,9 +387,10 @@ public final class CPU {
                 vRegister[x] = (byte) ((short) vRegister[y] - ((short) vRegister[x]));
                 break;
             case 0xE:
-                // 8XYE - Shifts VX left by one. VF is set to the value of the most significant bit of VX before the shift
-                vRegister[0xF] = (byte) ((vRegister[x] >> 4) & 0b0001);
-                vRegister[x] = (byte) (vRegister[x] << 1);
+                // 8XYE - Store the value of register VY shifted left one bit in register VX
+                //Set register VF to the most significant bit prior to the shift
+                vRegister[0xF] = (byte) ((vRegister[y] >> 7) & 0b0000_0001);
+                vRegister[x] = (byte) ((vRegister[y] << 1) & 0x0000FFFF);
                 break;
             default:
                 throw new IllegalArgumentException();
