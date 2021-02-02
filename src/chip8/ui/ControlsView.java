@@ -10,14 +10,8 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.EventListenerList;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Hashtable;
 import java.util.Objects;
 
@@ -121,12 +115,12 @@ public final class ControlsView extends JComponent {
         operationPanel.setBorder(new EmptyBorder(12, 8, 8, 8));
         operationPanel.add(new JLabel("Current Opcode:"));
         operationPanel.add(new DynamicLabel<MachineState>(
-                this, "machineStateChange", "",
+                this, "machineStateChanged", "",
                 state -> state.getCurrentOperation().asHexString())
         );
         operationPanel.add(new JLabel("Next Opcode:"));
         operationPanel.add(new DynamicLabel<MachineState>(
-                this, "machineStateChange",
+                this, "machineStateChanged",
                 "", state -> state.getNextOperation().asHexString())
         );
         controlPanel.add(operationPanel, BorderLayout.CENTER);
