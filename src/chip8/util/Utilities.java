@@ -25,14 +25,6 @@ public final class Utilities {
         return String.format("0x%04X", (v & 0x0000FFFF));
     }
 
-    public static boolean isEqual(byte x, byte y) {
-        return (x ^ y) == 0;
-    }
-
-    public static boolean isEqual(int x, int y) {
-        return (x ^ y) == 0;
-    }
-
     public static byte[] readBytes(File romFile) {
         try {
             return Files.readAllBytes(romFile.toPath());

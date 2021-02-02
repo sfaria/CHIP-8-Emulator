@@ -6,20 +6,18 @@ import chip8.hardware.PCSpeaker;
 import chip8.hardware.RenderListener;
 import chip8.ui.DebuggerListener;
 import chip8.ui.MachineState;
+import chip8.util.ByteMath;
 import chip8.util.Utilities;
-import jdk.jshell.execution.Util;
 
 import javax.swing.event.EventListenerList;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static chip8.util.Utilities.arrayCopy;
-import static chip8.util.Utilities.isEqual;
 
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
@@ -188,7 +186,7 @@ public final class CPU {
             OperationState state = new OperationState(programCounter, memory);
             fireExecuteStateChanged(state);
 
-            if (isEqual(state.getCurrentOpcode(), 0x0000)) {
+            if ((int) state.getCurrentOpcode() == 0x0000) {
                 // current operation is empty
                 return ExecutionResult.END_PROGRAM;
             }
@@ -215,7 +213,7 @@ public final class CPU {
                 case 0xA -> doAX(nnn);
                 case 0xB -> doBX(nnn);
                 case 0xC -> doCX(lowByte, x);
-                case 0xD -> do0XD(n, x, y);
+                case 0xD -> doDX(n, x, y);
                 case 0xE -> doEX(n, x);
                 case 0xF -> doFX(lowByte, x);
                 default -> throw new IllegalArgumentException();
@@ -235,7 +233,160 @@ public final class CPU {
 
     // -------------------- Private Methods --------------------
 
-    private void do0XD(short n, short x, short y) {
+    private void do0X(short currentOpcode) {
+        if ((int) currentOpcode == 0x00E0) {
+            // 00E0 - Clear the screen
+            graphics = new boolean[32][64];
+            renderFlag = true;
+        } else if ((int) currentOpcode == 0x00EE) {
+            // 00EE - Returns from a subroutine
+            stackPointer = (short) (stackPointer - 1);
+            programCounter = stack[stackPointer];
+        } else {
+            // 0NNN - Calls RCA 1802 program at address NNN. Ignored by modern interpreters.
+            System.out.println("0NNN called: Ignoring");
+        }
+    }
+
+    private void do1X(short nnn) {
+        // 1NNN - Jumps to memory address NNN
+        programCounter = nnn;
+    }
+
+    private void do2X(short nnn) {
+        // 2NNN - Jumps to subroutine at NNN
+        stack[stackPointer] = programCounter;
+        stackPointer = (short) (stackPointer + 1);
+        programCounter = nnn;
+    }
+
+    private void do3X(byte lowByte, byte x) {
+        // 3XNN - Skips the next instruction if VX equals NN
+        if (ByteMath.equal(vRegister[x], lowByte)) {
+            programCounter += 2;
+        }
+    }
+
+    private void do4X(byte lowByte, byte x) {
+        // 4XNN - Skips the next instruction if VX doesn't equal NN
+        if (!ByteMath.equal(vRegister[x], lowByte)) {
+            programCounter = (short) (programCounter + 2);
+        }
+    }
+
+    private void do5X(byte x, byte y) {
+        // 5XY0 - Skips the next instruction if VX equals VY.
+        if (ByteMath.equal(vRegister[x], vRegister[y])) {
+            programCounter = (short) (programCounter + 2);
+        }
+    }
+
+    private void do6X(byte lowByte, byte x) {
+        // 6XNN - Sets VX to NN
+        vRegister[x] = lowByte;
+    }
+
+    private void do7X(byte lowByte, byte x) {
+        // 7XNN - Adds NN to VX
+        vRegister[x] = ByteMath.add(vRegister[x], lowByte);
+    }
+
+    @SuppressWarnings("EnhancedSwitchMigration")
+    private void do8XY(short n, short x, short y) {
+        switch (n) {
+            case 0x0:
+                // 8XY0 - Sets VX to the value of VY
+                vRegister[x] = vRegister[y];
+                break;
+            case 0x1:
+                // 8XY1 - Sets VX to VX or VY
+                vRegister[x] = (byte) (vRegister[x] | vRegister[y]);
+                break;
+            case 0x2:
+                // 8XY2 - Sets VX to VX and VY
+                vRegister[x] = (byte) (vRegister[x] & vRegister[y]);
+                break;
+            case 0x3:
+                // 8XY3 - Sets VX to VX xor VY
+                vRegister[x] = (byte) (vRegister[x] ^ vRegister[y]);
+                break;
+            case 0x4:
+                /* 8XY4 -
+                 * Set Vx = Vx + Vy, set VF = carry.
+                 *
+                 * The values of Vx and Vy are added together. If the result is greater than
+                 * 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. Only the lowest 8 bits of
+                 * the result are kept, and stored in Vx.
+                 */
+                short result = ByteMath.addWithOverflow(vRegister[x], vRegister[y]);
+                vRegister[0xF] = result > 255 ? (byte) 1 : (byte) 0;
+                vRegister[x] = (byte) (result & 0x00FF);
+                break;
+            case 0x5:
+                /*
+                 * 8xy5 - SUB Vx, Vy
+                 * Set Vx = Vx - Vy, set VF = NOT borrow.
+                 *
+                 * If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
+                 */
+                vRegister[0xF] = ByteMath.gt(vRegister[x], vRegister[y]) ? (byte) 1 : (byte) 0;
+                vRegister[x] = ByteMath.subtract(vRegister[x], vRegister[y]);
+                break;
+            case 0x6:
+                // 8XY6 - Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift
+                vRegister[0xF] = (byte) (vRegister[x] & 0b0001);
+                vRegister[x] = (byte) (vRegister[x] >> 1);
+                break;
+            case 0x7:
+                // 8XY7 - Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't
+                if (vRegister[y] > vRegister[x]) {
+                    vRegister[0xF] = 1;
+                } else {
+                    vRegister[0xF] = 0;
+                }
+                vRegister[0xF] = ByteMath.gt(vRegister[y], vRegister[x]) ? (byte) 1 : (byte) 0;
+                vRegister[x] = ByteMath.subtract(vRegister[y], vRegister[x]);
+                break;
+            case 0xE:
+                // 8XYE - Store the value of register VX shifted left one bit in register VX
+                //Set register VF to the most significant bit prior to the shift
+                vRegister[0xF] = (byte) ((vRegister[x] & 0x00FF) >> 7);
+                vRegister[x] = (byte) (vRegister[x] << 1);
+                break;
+            default:
+                throw new IllegalArgumentException();
+        }
+    }
+
+    private void do9X(byte x, byte y) {
+        // 9XY0 - Skips the next instruction if VX doesn't equal VY
+        if (!ByteMath.equal(vRegister[x], vRegister[y])) {
+            programCounter += 2;
+        }
+    }
+
+    private void doAX(short nnn) {
+        /*
+         *  ANNN - LD I, addr
+         *  Set I = nnn.
+         *
+         *  The value of register I is set to nnn.
+         */
+        indexRegister = nnn;
+    }
+
+    private void doBX(short nnn) {
+        // BNNN - Jumps to the address NNN plus V0
+        programCounter = (short) (nnn + (((short) vRegister[0x0]) & 0x00FF));
+    }
+
+    private void doCX(byte lowByte, byte x) {
+        // CXNN - Sets VX to a random number and NN
+        short randomShort = (short) rng.nextInt(255);
+        vRegister[x] = (byte) ((randomShort & 0x00FF) & lowByte);
+    }
+
+    private void doDX(short n, short x, short y) {
         // DXYN - Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
         // The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites
         // on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen. If this causes any pixels to
@@ -281,159 +432,6 @@ public final class CPU {
         renderFlag = true;
     }
 
-    private void do0X(short currentOpcode) {
-        if (isEqual(currentOpcode, 0x00E0)) {
-            // 00E0 - Clear the screen
-            graphics = new boolean[32][64];
-            renderFlag = true;
-        } else if (isEqual(currentOpcode, 0x00EE)) {
-            // 00EE - Returns from a subroutine
-            programCounter = stack[--stackPointer];
-        } else {
-            // 0NNN - Calls RCA 1802 program at address NNN. Ignored by modern interpreters.
-            System.out.println("0NNN called: Ignoring");
-        }
-    }
-
-    private void doCX(byte lowByte, byte x) {
-        // CXNN - Sets VX to a random number and NN
-        short randomShort = (short) rng.nextInt(255);
-        vRegister[x] = (byte) ((randomShort & 0x00FF) & lowByte);
-    }
-
-    private void doBX(short nnn) {
-        // BNNN - Jumps to the address NNN plus V0
-        programCounter = (short) (nnn + (short) vRegister[0x0]);
-    }
-
-    private void doAX(short nnn) {
-        /*
-         *  ANNN - LD I, addr
-         *  Set I = nnn.
-         *
-         *  The value of register I is set to nnn.
-         */
-        indexRegister = nnn;
-    }
-
-    private void do7X(byte lowByte, byte x) {
-        // 7XNN - Adds NN to VX
-        vRegister[x] += lowByte;
-    }
-
-    private void do9X(byte x, byte y) {
-        // 9XY0 - Skips the next instruction if VX doesn't equal VY
-        if (!isEqual(vRegister[x], vRegister[y])) {
-            programCounter += 2;
-        }
-    }
-
-    private void do6X(byte lowByte, byte x) {
-        // 6XNN - Sets VX to NN
-        vRegister[x] = lowByte;
-    }
-
-    private void do5X(byte x, byte y) {
-        // 5XY0 - Skips the next instruction if VX equals VY.
-        if (isEqual(vRegister[x], vRegister[y])) {
-            programCounter += 2;
-        }
-    }
-
-    private void do4X(byte lowByte, byte x) {
-        // 4XNN - Skips the next instruction if VX doesn't equal NN
-        if (!isEqual(vRegister[x], lowByte)) {
-            programCounter += 2;
-        }
-    }
-
-    private void do3X(byte lowByte, byte x) {
-        // 3XNN - Skips the next instruction if VX equals NN
-        if (isEqual(vRegister[x], lowByte)) {
-            programCounter += 2;
-        }
-    }
-
-    private void do2X(short nnn) {
-        // 2NNN - Jumps to subroutine at NNN
-        stack[stackPointer++] = programCounter;
-        programCounter = nnn; // probably should check that this is in bounds
-    }
-
-    private void do1X(short nnn) {
-        // 1NNN - Jumps to memory address NNN
-        programCounter = nnn; // probably should check that this is in bounds
-    }
-
-
-    @SuppressWarnings("EnhancedSwitchMigration")
-    private void do8XY(short n, short x, short y) {
-        switch (n) {
-            case 0x0:
-                // 8XY0 - Sets VX to the value of VY
-                vRegister[x] = vRegister[y];
-                break;
-            case 0x1:
-                // 8XY1 - Sets VX to VX or VY
-                vRegister[x] = (byte) (vRegister[x] | vRegister[y]);
-                break;
-            case 0x2:
-                // 8XY2 - Sets VX to VX and VY
-                vRegister[x] = (byte) (vRegister[x] & vRegister[y]);
-                break;
-            case 0x3:
-                // 8XY3 - Sets VX to VX xor VY
-                vRegister[x] = (byte) (vRegister[x] ^ vRegister[y]);
-                break;
-            case 0x4:
-                // 8XY4 - Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't
-                short result = (short) ((((short) vRegister[x]) & 0x00FF) + (((short) vRegister[y]) & 0x00FF));
-                if (result > 255) {
-                    vRegister[0xF] = 1;
-                } else {
-                    vRegister[0xF] = 0;
-                }
-                vRegister[x] = (byte)(result & 0x00FF);
-                break;
-            case 0x5:
-                /*
-                 * 8xy5 - SUB Vx, Vy
-                 * Set Vx = Vx - Vy, set VF = NOT borrow.
-                 *
-                 * If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
-                 */
-                if (vRegister[x] > vRegister[y]) {
-                    vRegister[0xF] = 1;
-                } else {
-                    vRegister[0xF] = 0;
-                }
-                vRegister[x] = (byte)(((short) vRegister[x]) - ((short) vRegister[y]));
-                break;
-            case 0x6:
-                // 8XY6 - Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift
-                vRegister[0xF] = (byte) (vRegister[x] & 0b0001);
-                vRegister[x] = (byte) (vRegister[x] >> 1);
-                break;
-            case 0x7:
-                // 8XY7 - Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't
-                if (vRegister[y] > vRegister[x]) {
-                    vRegister[0xF] = 1;
-                } else {
-                    vRegister[0xF] = 0;
-                }
-                vRegister[x] = (byte) ((short) vRegister[y] - ((short) vRegister[x]));
-                break;
-            case 0xE:
-                // 8XYE - Store the value of register VX shifted left one bit in register VX
-                //Set register VF to the most significant bit prior to the shift
-                vRegister[0xF] = (byte) ((vRegister[x] & 0x00FF) >> 7);
-                vRegister[x] = (byte) (vRegister[x] << 1);
-                break;
-            default:
-                throw new IllegalArgumentException();
-        }
-    }
-
     private void doEX(short n, short x) {
         switch (n) {
             case 0xE:
@@ -453,12 +451,11 @@ public final class CPU {
         }
     }
 
-    @SuppressWarnings("EnhancedSwitchMigration")
     private void doFX(short lowByte, short x) {
         switch (lowByte) {
             case 0x07:
                 // FX07 - Sets VX to the value of the delay timer
-                vRegister[x] = (byte) delayTimer;
+                vRegister[x] = (byte) ((delayTimer) & 0x00FF);
                 break;
             case 0x0A:
                 // FX0A - A key press is awaited, and then stored in VX
@@ -474,7 +471,7 @@ public final class CPU {
                 break;
             case 0x1E:
                 // FX1E - Adds VX to I
-                indexRegister += ((short) (vRegister[x]));
+                indexRegister += (((short) vRegister[x]) & 0x00FF);
                 break;
             case 0x29:
                 // FX29 - Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are
