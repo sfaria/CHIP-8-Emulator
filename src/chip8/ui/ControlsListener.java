@@ -11,4 +11,5 @@ public interface ControlsListener extends EventListener {
     default void shouldWaitChanged(boolean shouldWait) {}
     default void setVolume(double volume) {}
     default void romSelected(File romFile) {}
+    default void colorPaletteChanged(ColorPalette selectedPalette) {}
 }

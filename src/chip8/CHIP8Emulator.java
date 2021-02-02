@@ -6,9 +6,11 @@ import chip8.hardware.ClockSimulator;
 import chip8.hardware.Display;
 import chip8.hardware.Keyboard;
 import chip8.hardware.PCSpeaker;
+import chip8.ui.ColorPalette;
 import chip8.ui.ControlsListener;
 import chip8.ui.ControlsView;
 import chip8.util.Utilities;
+import jdk.jshell.execution.Util;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -45,6 +47,12 @@ final class CHIP8Emulator {
 
         ControlsView controlsView = new ControlsView(cpu);
         controlsView.addControlsListener(listener);
+        controlsView.addControlsListener(new ControlsListener() {
+            @Override
+            public void colorPaletteChanged(ColorPalette selectedPalette) {
+                view.setColorPalette(selectedPalette);
+            }
+        });
         displayPanel.add(controlsView, BorderLayout.SOUTH);
         mainPanel.add(displayPanel, BorderLayout.CENTER);
 
@@ -92,7 +100,6 @@ final class CHIP8Emulator {
             public void shouldEndWait() {
                 Utilities.invokeInBackground(cpu::endWait);
             }
-
             @Override
             public void setVolume(double volume) {
                 Utilities.invokeInBackground(() -> speaker.setVolume(volume));

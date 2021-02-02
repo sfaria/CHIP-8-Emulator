@@ -31,7 +31,7 @@ public final class ControlsView extends JComponent {
         cpu.addDebuggerListener(this::fireMachineStateChanged);
         setLayout(new BorderLayout());
         setBorder(new EmptyBorder(4, 8, 8, 8));
-        setPreferredSize(new Dimension(640, 200));
+        setPreferredSize(new Dimension(640, 240));
         add(createRegisterPanel(), BorderLayout.CENTER);
         add(createBreakpointPanel(), BorderLayout.EAST);
         add(createControlsPanel(), BorderLayout.WEST);
@@ -58,11 +58,7 @@ public final class ControlsView extends JComponent {
         JSlider volumeSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, 50);
         volumeSlider.setMajorTickSpacing(10);
         volumeSlider.setPaintTicks(true);
-        volumeSlider.setPaintLabels(true);
-        volumeSlider.setLabelTable(new Hashtable<>() {{
-            put(0, new JLabel("Min"));
-            put(100, new JLabel("Max"));
-        }});
+        volumeSlider.setPaintLabels(false);
         volumeSlider.addChangeListener(e -> {
             if (!volumeSlider.getValueIsAdjusting()) {
                 int volume = volumeSlider.getValue();
@@ -72,10 +68,22 @@ public final class ControlsView extends JComponent {
         });
         volumePanel.add(volumeSlider);
 
-        JPanel controlsPanel = new JPanel(new BorderLayout());
+        JPanel palettePanel = new JPanel(new GridLayout(2, 1, 8, 4));
+        JComboBox<ColorPalette> paletteJComboBox = new JComboBox<>(new PaletteComboModel());
+        paletteJComboBox.setRenderer(new PaletteRenderer());
+        palettePanel.add(new JLabel("Color Palette:"));
+        palettePanel.add(paletteJComboBox);
+
+        paletteJComboBox.addActionListener(e -> {
+            ColorPalette palette = (ColorPalette) paletteJComboBox.getSelectedItem();
+            firePaletteChanged(palette);
+        });
+
+        JPanel controlsPanel = new JPanel(new GridLayout(3, 1, 8, 4));
         controlsPanel.setBorder(new TitledBorder(new LineBorder(Color.GRAY, 2, true), "Controls"));
-        controlsPanel.add(openFilePanel, BorderLayout.NORTH);
-        controlsPanel.add(volumePanel, BorderLayout.CENTER);
+        controlsPanel.add(openFilePanel);
+        controlsPanel.add(palettePanel);
+        controlsPanel.add(volumePanel);
         return controlsPanel;
     }
 
@@ -133,6 +141,12 @@ public final class ControlsView extends JComponent {
         }
     }
 
+    private void firePaletteChanged(ColorPalette palette) {
+        for (ControlsListener l : ll.getListeners(ControlsListener.class)) {
+            l.colorPaletteChanged(palette);
+        }
+    }
+
     private void fireWaitChanged(boolean doWait) {
         for (ControlsListener l : ll.getListeners(ControlsListener.class)) {
             l.shouldWaitChanged(doWait);
@@ -157,6 +171,34 @@ public final class ControlsView extends JComponent {
     }
 
     // -------------------- Inner Classes --------------------
+
+    private static final class PaletteRenderer extends JLabel implements ListCellRenderer<ColorPalette> {
+        @Override
+        public Component getListCellRendererComponent(JList<? extends ColorPalette> list, ColorPalette value, int index, boolean isSelected, boolean cellHasFocus) {
+            setText(value.displayName());
+            return this;
+        }
+    }
+
+    private static final class PaletteComboModel extends AbstractListModel<ColorPalette> implements ComboBoxModel<ColorPalette> {
+        private ColorPalette selectedItem = Palettes.ALL_PALETTES.get(0);
+
+        @Override public int getSize() {
+            return Palettes.ALL_PALETTES.size();
+        }
+
+        @Override public ColorPalette getElementAt(int index) {
+            return Palettes.ALL_PALETTES.get(index);
+        }
+
+        @Override public void setSelectedItem(Object anItem) {
+            selectedItem = (ColorPalette) anItem;
+        }
+
+        @Override public Object getSelectedItem() {
+            return selectedItem;
+        }
+    }
 
     private final class OpenFileAction extends AbstractAction {
         OpenFileAction() {

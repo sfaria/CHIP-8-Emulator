@@ -1,6 +1,8 @@
 package chip8.hardware;
 
 import chip8.cpu.CPU;
+import chip8.ui.ColorPalette;
+import chip8.ui.Palettes;
 
 import javax.swing.*;
 import java.awt.*;
@@ -21,7 +23,7 @@ public final class Display extends Canvas {
     private final int height = 32;
     private final int scaleFactor = 10;
     private final Toolkit toolkit;
-
+    private ColorPalette palette = Palettes.ALL_PALETTES.get(0);
     private boolean[][] memory = new boolean[height][width];
 
     // -------------------- Constructors --------------------
@@ -41,6 +43,10 @@ public final class Display extends Canvas {
     }
 
     // -------------------- Default Methods --------------------
+
+    public final void setColorPalette(ColorPalette palette) {
+        SwingUtilities.invokeLater(() -> this.palette = palette);
+    }
 
     public final void startRendering() {
         createBufferStrategy(2);
@@ -64,7 +70,7 @@ public final class Display extends Canvas {
             Rectangle pixel = new Rectangle(0, 0, getWidth() / width, getHeight() / height);
             for (boolean[] row : memory) {
                 for (boolean pixelState : row) {
-                    Color color = pixelState ? Color.WHITE : Color.BLACK;
+                    Color color = pixelState ? palette.onPixel() : palette.offPixel();
                     Color _color = g2d.getColor();
                     try {
                         g2d.setColor(color);
