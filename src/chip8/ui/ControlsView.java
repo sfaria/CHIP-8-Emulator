@@ -53,11 +53,10 @@ public final class ControlsView extends JComponent {
 
     private JPanel createControlsPanel() {
         JPanel openFilePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        JButton openFileButton = new JButton(new ImageIcon("res/folder.png"));
+        JButton openFileButton = new JButton(new OpenFileAction());
         DynamicLabel<File> selectedFileLabel = new DynamicLabel<>(this, "fileSelected", "<No ROM Loaded!>", File::getName);
         openFilePanel.add(openFileButton);
         openFilePanel.add(selectedFileLabel);
-        openFileButton.addActionListener(new OpenFileAction());
 
         JPanel volumePanel = new JPanel(new GridLayout(2, 1, 8, 4));
         volumePanel.add(new JLabel("Volume Control:"));
@@ -165,75 +164,37 @@ public final class ControlsView extends JComponent {
 
     // -------------------- Inner Classes --------------------
 
-    private final class OpenFileAction implements ActionListener {
-        private File lastDirectoryOpened = getSavedLocation();
+    private final class OpenFileAction extends AbstractAction {
+        OpenFileAction() {
+            setIcon("folder.png");
+        }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            JFileChooser fileChooser = new JFileChooser(lastDirectoryOpened);
-            fileChooser.setDialogTitle("Select a CHIP-8 ROM!");
-            fileChooser.setMultiSelectionEnabled(false);
-            fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-            int result = fileChooser.showOpenDialog(ControlsView.this);
-            if (result == JFileChooser.APPROVE_OPTION) {
-                File selectedFile = fileChooser.getSelectedFile();
-                if (selectedFile != null && selectedFile.exists()) {
-                    lastDirectoryOpened = selectedFile.getParentFile();
-                    writeSavedLocation(lastDirectoryOpened);
-                }
-                fireFileOpened(selectedFile);
-            }
-        }
-
-        private File getSavedLocation() {
-            if (lastDirectoryOpened == null) {
-                File config = Path.of(System.getenv("LOCALAPPDATA"))
-                        .resolve("chip8")
-                        .resolve("last_opened")
-                        .toAbsolutePath()
-                        .toFile();
-                if (!config.exists()) {
-                    //noinspection ResultOfMethodCallIgnored
-                    config.getParentFile().mkdirs();
-                    return null;
-                } else {
-                    File dir = readDir(config);
-                    if (dir == null || !dir.exists()) {
-                        return null;
+            setIcon("loading.gif");
+            Utilities.withSavedROMLocation(lastDirectoryOpened -> {
+                assert SwingUtilities.isEventDispatchThread();
+                setIcon("folder.png");
+                JFileChooser fileChooser = new JFileChooser(lastDirectoryOpened);
+                fileChooser.setDialogTitle("Select a CHIP-8 ROM!");
+                fileChooser.setMultiSelectionEnabled(false);
+                fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+                int result = fileChooser.showOpenDialog(ControlsView.this);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    if (selectedFile != null && selectedFile.exists()) {
+                        lastDirectoryOpened = selectedFile.getParentFile();
+                        Utilities.writeSavedROMLocation(lastDirectoryOpened);
                     }
-                    lastDirectoryOpened = dir;
+                    fireFileOpened(selectedFile);
                 }
-            }
-            return lastDirectoryOpened;
+            });
         }
 
-        private void writeSavedLocation(File dir) {
-            File config = Path.of(System.getenv("LOCALAPPDATA"))
-                    .resolve("chip8")
-                    .resolve("last_opened")
-                    .toAbsolutePath()
-                    .toFile();
-
-            if (!config.exists()) {
-                //noinspection ResultOfMethodCallIgnored
-                config.getParentFile().mkdirs();
-            }
-
-            try {
-                Files.writeString(config.toPath(), dir.getAbsolutePath());
-            } catch (IOException ignore) {}
+        private void setIcon(String name) {
+            putValue(Action.SMALL_ICON, new ImageIcon("res/%s".formatted(name)));
         }
 
-        private File readDir(File config) {
-            try {
-                return Files.readAllLines(config.toPath()).stream()
-                        .findFirst()
-                        .map(File::new)
-                        .orElse(null);
-            } catch (IOException ignore) {
-                return null;
-            }
-        }
     }
 
 }
