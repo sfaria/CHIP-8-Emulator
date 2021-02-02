@@ -6,6 +6,8 @@ import chip8.hardware.PCSpeaker;
 import chip8.hardware.RenderListener;
 import chip8.ui.DebuggerListener;
 import chip8.ui.MachineState;
+import chip8.util.Utilities;
+import jdk.jshell.execution.Util;
 
 import javax.swing.event.EventListenerList;
 import java.io.File;
@@ -143,12 +145,7 @@ public final class CPU {
             System.arraycopy(FONT_SET, 0, this.memory, 0, FONT_SET.length);
 
             // load the file contents into memory
-            byte[] fileBytes = new byte[0];
-            try {
-                fileBytes = Files.readAllBytes(romFile.toPath());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            byte[] fileBytes = Utilities.readBytes(romFile);
             assert romFile.length() < memory.length - programCounter; // make sure we don't overrun memory
             System.arraycopy(fileBytes, 0, memory, programCounter, fileBytes.length);
 

@@ -33,6 +33,14 @@ public final class Utilities {
         return (x ^ y) == 0;
     }
 
+    public static byte[] readBytes(File romFile) {
+        try {
+            return Files.readAllBytes(romFile.toPath());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static void arrayCopy(boolean[][] src, boolean[][] dest) {
         for (int i = 0; i < src.length; i++) {
             System.arraycopy(src[i], 0, dest[i], 0, src[i].length);
