@@ -1,5 +1,7 @@
 package chip8.hardware;
 
+import chip8.util.Utilities;
+
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
@@ -52,18 +54,20 @@ public final class PCSpeaker implements AutoCloseable {
 
     public final void startBeepIfNotStarted() {
         if (beeping.compareAndSet(false, true)) {
-            ex.execute(() -> {
-                double vol = volume.get();
-                byte[] buff = fillBuffer(vol);
-                line.start();
-                while (beeping.get()) {
-                    line.write(buff, 0, buff.length);
-                    double _vol = volume.get();
-                    if (_vol != vol) {
-                        vol = _vol;
-                        buff = fillBuffer(vol);
+            Utilities.invokeInBackground(() -> {
+                ex.execute(() -> {
+                    double vol = volume.get();
+                    byte[] buff = fillBuffer(vol);
+                    line.start();
+                    while (beeping.get()) {
+                        line.write(buff, 0, buff.length);
+                        double _vol = volume.get();
+                        if (_vol != vol) {
+                            vol = _vol;
+                            buff = fillBuffer(vol);
+                        }
                     }
-                }
+                });
             });
         }
     }
