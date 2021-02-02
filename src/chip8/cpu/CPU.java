@@ -154,14 +154,20 @@ public final class CPU {
 
             ClockSimulator delayClock = new ClockSimulator(60);
             delayClock.withClockRegulation(() -> {
-                delayTimer = (short) Math.max(0, delayTimer - 1);
-                soundTimer = (short) Math.max(0, soundTimer - 1);
-                if (soundTimer == 0) {
-                    speaker.endBeep();
-                } else {
-                    speaker.startBeepIfNotStarted();
+                lock.lock();
+                try {
+                    waitForSignal();
+                    delayTimer = (short) Math.max(0, delayTimer - 1);
+                    soundTimer = (short) Math.max(0, soundTimer - 1);
+                    if (soundTimer == 0) {
+                        speaker.endBeep();
+                    } else {
+                        speaker.startBeepIfNotStarted();
+                    }
+                    return true;
+                } finally {
+                    lock.unlock();
                 }
-                return true;
             });
 
         } finally {
