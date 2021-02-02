@@ -9,16 +9,12 @@ import chip8.ui.MachineState;
 
 import javax.swing.event.EventListenerList;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Objects;
 import java.util.Random;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static chip8.util.Utilities.arrayCopy;
 import static chip8.util.Utilities.isEqual;
@@ -76,11 +72,15 @@ public final class CPU {
     private final Random rng = new Random();
 
     // general stuff
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Condition condition = lock.newCondition();
+
     private final EventListenerList ll = new EventListenerList();
     private final Keyboard keyboard;
     private final PCSpeaker speaker;
-    private final ExecutorService ex = Executors.newSingleThreadExecutor();
-    private final Breakpointer breakpointer = new Breakpointer(false);
+
+    private boolean wait;
+    private boolean isWaiting;
 
     // -------------------- Constructors --------------------
 
@@ -101,10 +101,28 @@ public final class CPU {
         ll.add(RenderListener.class, l);
     }
 
-    public final void setShouldWait(boolean shouldWait) {}
+    public final void setShouldWait(boolean shouldWait) {
+        lock.lock();
+        try {
+            this.wait = shouldWait;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public final void endWait() {
+        lock.lock();
+        try {
+            this.isWaiting = false;
+            condition.signalAll();
+        } finally {
+            lock.unlock();
+        }
+    }
 
     public final void initAndLoadRom(File romFile) throws IOException {
-        ex.submit(() -> {
+        lock.lock();
+        try {
             if (!romFile.exists()) {
                 throw new RuntimeException("File '%s' not found!".formatted(romFile.toPath()));
             }
@@ -134,12 +152,8 @@ public final class CPU {
             assert romFile.length() < memory.length - programCounter; // make sure we don't overrun memory
             System.arraycopy(fileBytes, 0, memory, programCounter, fileBytes.length);
 
-            fireInit();
-        });
-
-        ClockSimulator delayClock = new ClockSimulator(60);
-        delayClock.withClockRegulation(() -> {
-            ex.submit(() -> {
+            ClockSimulator delayClock = new ClockSimulator(60);
+            delayClock.withClockRegulation(() -> {
                 delayTimer = (short) Math.max(0, delayTimer - 1);
                 soundTimer = (short) Math.max(0, soundTimer - 1);
                 if (soundTimer == 0) {
@@ -147,13 +161,20 @@ public final class CPU {
                 } else {
                     speaker.startBeepIfNotStarted();
                 }
+                return true;
             });
-            return true;
-        });
+
+        } finally {
+            lock.unlock();
+        }
+
+        fireInit();
     }
 
     public final ExecutionResult emulateCycle() {
-        Future<ExecutionResult> f = ex.submit(() -> {
+        lock.lock();
+        try {
+            waitForSignal();
             renderFlag = false;
 
             // we hit the end
@@ -204,12 +225,8 @@ public final class CPU {
             }
 
             return ExecutionResult.OK;
-        });
-
-        try {
-            return f.get();
-        } catch (InterruptedException | ExecutionException e) {
-            return ExecutionResult.FATAL;
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -487,6 +504,20 @@ public final class CPU {
                 break;
             default:
                 throw new IllegalArgumentException();
+        }
+    }
+
+    private void waitForSignal() {
+        assert lock.isLocked();
+        if (!wait) {
+            return;
+        }
+
+        isWaiting = true;
+        while (isWaiting) {
+            try {
+                condition.await();
+            } catch (InterruptedException ignore) {}
         }
     }
 

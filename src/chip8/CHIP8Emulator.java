@@ -1,6 +1,5 @@
 package chip8;
 
-import chip8.cpu.Breakpointer;
 import chip8.cpu.CPU;
 import chip8.cpu.ExecutionResult;
 import chip8.hardware.ClockSimulator;
@@ -16,10 +15,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 /**
  *
@@ -38,7 +33,6 @@ final class CHIP8Emulator {
     // -------------------- Private Static Methods --------------------
 
     private static void setupGraphicsSystem(CPU cpu, ControlsListener listener) {
-        assert !SwingUtilities.isEventDispatchThread();
         JPanel mainPanel = new JPanel(new BorderLayout());
 
         JPanel displayPanel = new JPanel(new BorderLayout());
@@ -93,11 +87,10 @@ final class CHIP8Emulator {
         PCSpeaker speaker = new PCSpeaker(0.5d);
         CPU cpu = new CPU(keyboard, speaker);
 
-        Breakpointer breakpointer = new Breakpointer(false);
         ControlsListener listener = new ControlsListener() {
             @Override
             public void shouldEndWait() {
-                Utilities.invokeInBackground(breakpointer::endWait);
+                Utilities.invokeInBackground(cpu::endWait);
             }
 
             @Override

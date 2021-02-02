@@ -1,11 +1,13 @@
 package chip8.hardware;
 
-import chip8.cpu.Breakpointer;
 import chip8.util.Utilities;
 
 import java.awt.*;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.awt.event.KeyEvent.*;
 /**
@@ -37,43 +39,105 @@ public final class Keyboard {
 
     // -------------------- Private Variables --------------------
 
-    private byte currentKey = -1;
-    private final Breakpointer waiter = new Breakpointer(true);
+    private final boolean[] keyState = new boolean[16];
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Condition condition = lock.newCondition();
 
     // -------------------- Constructors --------------------
 
     public Keyboard() {
+        Arrays.fill(keyState, false);
         KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
         manager.addKeyEventDispatcher(e -> {
-            switch (e.getID()) {
-                case KEY_PRESSED:
-                    if (e.getModifiersEx() == 0 && KEY_MAP.containsKey(e.getKeyCode())) {
-                        currentKey = KEY_MAP.get(e.getKeyCode());
-                        waiter.endWait();
-                    }
-                    break;
-                case KEY_RELEASED:
-                    Byte keystroke = KEY_MAP.get(e.getKeyCode());
-                    byte key = keystroke == null ? -1 : keystroke;
-                    if (e.getModifiersEx() == 0 && Utilities.isEqual(key, currentKey)) {
-                        currentKey = -1;
-                    }
-                    break;
+            if (e.getModifiersEx() == 0) {
+                int keyCode = e.getKeyCode();
+                switch (e.getID()) {
+                    case KEY_PRESSED:
+                        if (KEY_MAP.containsKey(keyCode)) {
+                            byte keyIndex = KEY_MAP.getOrDefault(keyCode, (byte) -1);
+                            if (keyIndex != -1) {
+                                Utilities.invokeInBackground(() -> pressKey(keyIndex));
+                            }
+
+                        }
+                        break;
+                    case KEY_RELEASED:
+                        byte keyIndex = KEY_MAP.getOrDefault(keyCode, (byte) -1);
+                        if (keyIndex != -1) {
+                            Utilities.invokeInBackground(() -> releaseKey(keyIndex));
+                        }
+                        break;
+                }
+                return false;
             }
-            return false;
+            return true;
         });
     }
+
 
     // -------------------- Default Methods --------------------
 
     public final byte waitForKeyPress() {
-        if (currentKey == -1) {
-            waiter.waitForSignal();
+        lock.lock();
+        try {
+            byte keyPressed = firstKeyPressed();
+            while (keyPressed == -1) {
+                try {
+                    condition.await();
+                } catch (InterruptedException ignore) {}
+
+                keyPressed = firstKeyPressed();
+            }
+            return keyPressed;
+        } finally {
+            lock.unlock();
         }
-        return currentKey;
     }
 
     public final boolean isPressed(byte key) {
-        return Utilities.isEqual(key, currentKey);
+        if (key < 0 || key >= keyState.length) {
+            return false;
+        }
+
+        lock.lock();
+        try {
+            return keyState[key];
+        } finally {
+            lock.unlock();
+        }
     }
+
+    // -------------------- Private Methods --------------------
+
+    private void pressKey(byte keyIndex) {
+        lock.lock();
+        try {
+            keyState[keyIndex] = true;
+            condition.signalAll();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void releaseKey(byte keyIndex) {
+        lock.lock();
+        try {
+            keyState[keyIndex] = false;
+            condition.signalAll();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private byte firstKeyPressed() {
+        assert lock.isLocked();
+        for (byte i = 0; i < keyState.length; i++) {
+            boolean pressed = keyState[i];
+            if (pressed) {
+               return i;
+            }
+        }
+        return -1;
+    }
+
 }
