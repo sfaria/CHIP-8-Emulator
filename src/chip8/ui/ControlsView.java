@@ -95,6 +95,7 @@ public final class ControlsView extends JComponent {
         freqSpinner.addChangeListener(e -> {
             int frequency = (int) model.getNumber();
             fireFrequencyChanged(frequency);
+            Props.setSavedCPUSpeed(frequency);
         });
 
         JPanel palettePanel = new JPanel(new GridLayout(2, 1, 8, 4));
