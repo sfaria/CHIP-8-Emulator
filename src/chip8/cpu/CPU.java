@@ -300,15 +300,15 @@ public final class CPU {
                 break;
             case 0x1:
                 // 8XY1 - Sets VX to VX or VY
-                vRegister[x] = (byte) (vRegister[x] | vRegister[y]);
+                vRegister[x] = (byte) ((vRegister[x] | vRegister[y]) & 0x00FF);
                 break;
             case 0x2:
                 // 8XY2 - Sets VX to VX and VY
-                vRegister[x] = (byte) (vRegister[x] & vRegister[y]);
+                vRegister[x] = (byte) ((vRegister[x] & vRegister[y]) & 0x00FF);
                 break;
             case 0x3:
                 // 8XY3 - Sets VX to VX xor VY
-                vRegister[x] = (byte) (vRegister[x] ^ vRegister[y]);
+                vRegister[x] = (byte) ((vRegister[x] ^ vRegister[y]) & 0x00FF);
                 break;
             case 0x4:
                 /* 8XY4 -
@@ -339,11 +339,6 @@ public final class CPU {
                 break;
             case 0x7:
                 // 8XY7 - Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't
-                if (vRegister[y] > vRegister[x]) {
-                    vRegister[0xF] = 1;
-                } else {
-                    vRegister[0xF] = 0;
-                }
                 vRegister[0xF] = ByteMath.gt(vRegister[y], vRegister[x]) ? (byte) 1 : (byte) 0;
                 vRegister[x] = ByteMath.subtract(vRegister[y], vRegister[x]);
                 break;
@@ -476,7 +471,7 @@ public final class CPU {
             case 0x29:
                 // FX29 - Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are
                 // represented by a 4x5 font
-                indexRegister = (short) (((short) vRegister[x]) * 5);
+                indexRegister = (short) ((((short) vRegister[x]) & 0x00FF) * 5);
                 break;
             case 0x33:
                 // FX33 - Stores the Binary-coded decimal representation of VX, with the most significant of three digits at

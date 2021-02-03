@@ -1,6 +1,7 @@
 package chip8.ui;
 
 import chip8.cpu.OperationState;
+import chip8.util.Utilities;
 
 /**
  * @author Scott Faria <scott.faria@protonmail.com>
@@ -37,14 +38,15 @@ public final class MachineState {
         return nextOperation;
     }
 
-    final short getProgramCounter() {
-        return programCounter;
+    final String getProgramCounter() {
+        return Utilities.toHex(programCounter & 0x0FFF);
     }
 
-    final byte getRegisterAt(int registerIndex) {
+    final String getRegisterAt(int registerIndex) {
         if (registerIndex < 0 || registerIndex > 15) {
             throw new IllegalStateException("Unknown register: V" + registerIndex);
         }
-        return registerStates[registerIndex];
+        byte state = registerStates[registerIndex];
+        return Utilities.toHex(state & 0x000000FF);
     }
 }

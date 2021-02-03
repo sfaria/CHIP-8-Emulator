@@ -100,7 +100,7 @@ public final class ControlsView extends JComponent {
             registerPanel.add(label);
             DynamicLabel<MachineState> renderer = new DynamicLabel<>(
                     this, "machineStateChanged", "",
-                    (state) -> Utilities.toHex(state.getRegisterAt(index))
+                    (state) -> state.getRegisterAt(index)
             );
             label.setLabelFor(renderer);
             registerPanel.add(renderer);
@@ -123,8 +123,15 @@ public final class ControlsView extends JComponent {
         controlPanel.setBorder(new TitledBorder(new LineBorder(Color.GRAY, 2, true), "Operations"));
         controlPanel.add(buttonPanel, BorderLayout.NORTH);
 
-        JPanel operationPanel = new JPanel(new GridLayout(4, 1, 0, 4));
+        JPanel operationPanel = new JPanel(new GridLayout(6, 1, 0, 4));
         operationPanel.setBorder(new EmptyBorder(12, 8, 8, 8));
+
+        operationPanel.add(new JLabel("Program Counter: "));
+        operationPanel.add(new DynamicLabel<MachineState>(
+                this, "machineStateChanged", "",
+                MachineState::getProgramCounter
+        ));
+
         operationPanel.add(new JLabel("Current Opcode:"));
         operationPanel.add(new DynamicLabel<MachineState>(
                 this, "machineStateChanged", "",
