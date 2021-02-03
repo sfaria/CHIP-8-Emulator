@@ -5,9 +5,6 @@ import chip8.cpu.CPU;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.HierarchyBoundsAdapter;
-import java.awt.event.HierarchyEvent;
-import java.awt.event.HierarchyListener;
 import java.awt.image.BufferStrategy;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Timer;
@@ -58,7 +55,6 @@ public final class Display extends Canvas {
             }
         });
     }
-
 
     // -------------------- Default Methods --------------------
 

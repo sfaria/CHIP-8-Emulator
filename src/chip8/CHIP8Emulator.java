@@ -107,7 +107,7 @@ final class CHIP8Emulator {
 
     public static void main(String[] args) throws Exception {
         Keyboard keyboard = new Keyboard();
-        PCSpeaker speaker = new PCSpeaker(0.5d);
+        PCSpeaker speaker = new PCSpeaker();
         CPU cpu = new CPU(keyboard, speaker);
 
         ControlsListener listener = new ControlsListener() {

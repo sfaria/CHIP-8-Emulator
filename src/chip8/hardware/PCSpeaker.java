@@ -1,5 +1,6 @@
 package chip8.hardware;
 
+import chip8.Props;
 import chip8.util.Utilities;
 
 import javax.sound.sampled.AudioFormat;
@@ -31,8 +32,8 @@ public final class PCSpeaker implements AutoCloseable {
 
     // -------------------- Constructors --------------------
 
-    public PCSpeaker(double initialVolume) throws LineUnavailableException {
-        this.volume = new AtomicReference<>(initialVolume);
+    public PCSpeaker() throws LineUnavailableException {
+        this.volume = new AtomicReference<>(Props.getSavedVolume());
         AudioFormat audioFormat = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
         this.line = AudioSystem.getSourceDataLine(audioFormat);
         line.open(audioFormat);
