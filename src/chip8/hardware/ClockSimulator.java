@@ -22,8 +22,14 @@ public final class ClockSimulator {
 
     // -------------------- Public Methods --------------------
 
+    public final boolean isRunning() {
+        return timer != null;
+    }
+
     public final void stopGracefully() {
-        timer.cancel();
+        if (timer != null) {
+            timer.cancel();
+        }
     }
 
     public final void start(int hzTickRate) {

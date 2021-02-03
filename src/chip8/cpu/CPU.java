@@ -159,8 +159,10 @@ public final class CPU {
     }
 
     public final void setCpuClock(int cpuCLockHz) {
-        cpuClock.stopGracefully();
-        cpuClock.start(cpuCLockHz);
+        if (cpuClock.isRunning()) {
+            cpuClock.stopGracefully();
+            cpuClock.start(cpuCLockHz);
+        }
     }
 
     public final void start(File romFile) {

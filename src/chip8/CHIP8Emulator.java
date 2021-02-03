@@ -34,6 +34,7 @@ final class CHIP8Emulator {
 
     private static void setupGraphicsSystem(CPU cpu, ControlsListener listener) {
         JFrame frame = new JFrame("CHIP8 Emulator");
+        frame.setIconImage(new ImageIcon("res/frame_icon.png").getImage());
         JPanel mainPanel = new JPanel(new BorderLayout());
 
         JPanel displayPanel = new JPanel(new BorderLayout());
