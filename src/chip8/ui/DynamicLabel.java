@@ -18,7 +18,7 @@ final class DynamicLabel<T> extends JLabel {
             if (state != null) {
                 setText(valueRenderer.apply(state));
             } else {
-                setText("");
+                setText(defaultText);
             }
         });
     }

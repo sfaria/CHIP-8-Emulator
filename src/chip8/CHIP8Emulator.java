@@ -1,8 +1,6 @@
 package chip8;
 
 import chip8.cpu.CPU;
-import chip8.cpu.ExecutionResult;
-import chip8.hardware.ClockSimulator;
 import chip8.hardware.Display;
 import chip8.hardware.Keyboard;
 import chip8.hardware.PCSpeaker;
@@ -17,7 +15,6 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
-import java.io.IOException;
 
 /**
  *
@@ -82,27 +79,6 @@ final class CHIP8Emulator {
         frame.setVisible(true);
     }
 
-    private static void runRom(CPU cpu, File romFile) {
-        try {
-            cpu.initAndLoadRom(romFile);
-            ClockSimulator cpuClock = new ClockSimulator(500);
-            cpuClock.withClockRegulation(() -> {
-                ExecutionResult result = cpu.emulateCycle();
-                switch (result) {
-                    case OK -> {
-                        return true;
-                    }
-                    case END_PROGRAM, FATAL -> {
-                        return false;
-                    }
-                }
-                return false;
-            });
-        } catch (IOException e) {
-            throw new RuntimeException("Unexpected Exception.", e);
-        }
-    }
-
     // -------------------- Main Method --------------------
 
     public static void main(String[] args) throws Exception {
@@ -127,7 +103,11 @@ final class CHIP8Emulator {
 
             @Override
             public void romSelected(File romFile) {
-                Utilities.invokeInBackground(() -> runRom(cpu, romFile));
+                Utilities.invokeInBackground(() -> cpu.start(romFile));
+            }
+            @Override
+            public void stopEmulator() {
+                Utilities.invokeInBackground(cpu::stop);
             }
         };
 

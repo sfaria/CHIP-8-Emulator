@@ -30,13 +30,18 @@ public final class ControlsView extends JComponent {
 
     public ControlsView(CPU cpu) {
         Objects.requireNonNull(cpu);
-        cpu.addDebuggerListener(this::fireMachineStateChanged);
+        cpu.addDebuggerListener(new DebuggerListener() {
+            @Override
+            public void machineStateChanged(MachineState currentState) {
+                fireMachineStateChanged(currentState);
+            }
+        });
         setLayout(new BorderLayout());
         setBorder(new EmptyBorder(4, 8, 8, 8));
         setPreferredSize(new Dimension(640, 240));
         add(createRegisterPanel(), BorderLayout.CENTER);
-        add(createBreakpointPanel(), BorderLayout.EAST);
-        add(createControlsPanel(), BorderLayout.WEST);
+        add(createBreakpointPanel(cpu), BorderLayout.EAST);
+        add(createControlsPanel(cpu), BorderLayout.WEST);
     }
 
     // -------------------- Public Methods --------------------
@@ -47,12 +52,19 @@ public final class ControlsView extends JComponent {
 
     // -------------------- Private Methods --------------------
 
-    private JPanel createControlsPanel() {
+    private JPanel createControlsPanel(CPU cpu) {
         JPanel openFilePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         JButton openFileButton = new JButton(new OpenROMAction());
         DynamicLabel<File> selectedFileLabel = new DynamicLabel<>(this, "fileSelected", "<No ROM Loaded!>", File::getName);
         openFilePanel.add(openFileButton);
         openFilePanel.add(selectedFileLabel);
+
+        cpu.addDebuggerListener(new DebuggerListener() {
+            @Override
+            public void machineStopped() {
+                SwingUtilities.invokeLater(() -> firePropertyChange("fileSelected", null, null));
+            }
+        });
 
         JPanel volumePanel = new JPanel(new GridLayout(2, 1, 8, 4));
         volumePanel.add(new JLabel("Volume Control:"));
@@ -108,14 +120,32 @@ public final class ControlsView extends JComponent {
         return registerPanel;
     }
 
-    private JPanel createBreakpointPanel() {
+    private JPanel createBreakpointPanel(CPU cpu) {
         JButton playButton = new JButton(new ImageIcon("res/play.png"));
         playButton.addActionListener(e -> fireEndWait());
+        playButton.setEnabled(false);
+
+        JButton stopButton = new JButton(new ImageIcon("res/stop.png"));
+        stopButton.setEnabled(false);
+        stopButton.addActionListener(e -> fireStop());
+
+        cpu.addDebuggerListener(new DebuggerListener() {
+            @Override public void machineStarted() {
+                stopButton.setEnabled(true);
+                playButton.setEnabled(true);
+
+            }
+            @Override public void machineStopped() {
+                stopButton.setEnabled(false);
+                playButton.setEnabled(false);
+            }
+        });
 
         JCheckBox waitBox = new JCheckBox("Enable Breakpoint", false);
         waitBox.addItemListener(e -> fireWaitChanged(e.getStateChange() == ItemEvent.SELECTED));
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        buttonPanel.add(stopButton);
         buttonPanel.add(playButton);
         buttonPanel.add(waitBox);
 
@@ -161,6 +191,12 @@ public final class ControlsView extends JComponent {
     private void fireWaitChanged(boolean doWait) {
         for (ControlsListener l : ll.getListeners(ControlsListener.class)) {
             l.shouldWaitChanged(doWait);
+        }
+    }
+
+    private void fireStop() {
+        for (ControlsListener l : ll.getListeners(ControlsListener.class)) {
+            l.stopEmulator();
         }
     }
 

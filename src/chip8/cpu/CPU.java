@@ -11,7 +11,6 @@ import chip8.util.Utilities;
 
 import javax.swing.event.EventListenerList;
 import java.io.File;
-import java.io.IOException;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.locks.Condition;
@@ -46,6 +45,8 @@ public final class CPU {
             (byte) 0x00F0, (byte) 0x0080, (byte) 0x00F0, (byte) 0x0080, (byte) 0x0080  // F
     };
 
+    private static final int DELAY_CLOCK_HZ = 60;
+
     // -------------------- Private Methods --------------------
 
     // registers and memory
@@ -77,7 +78,9 @@ public final class CPU {
 
     private final EventListenerList ll = new EventListenerList();
     private final Keyboard keyboard;
+    private final ClockSimulator delayClock;
     private final PCSpeaker speaker;
+    private final ClockSimulator cpuClock;
 
     private boolean wait;
     private boolean isWaiting;
@@ -87,6 +90,40 @@ public final class CPU {
     public CPU(Keyboard keyboard, PCSpeaker speaker) {
         this.keyboard = Objects.requireNonNull(keyboard);
         this.speaker = speaker;
+        this.delayClock = new ClockSimulator(() -> {
+            lock.lock();
+            try {
+                waitForSignal();
+                delayTimer = (short) Math.max(0, delayTimer - 1);
+                soundTimer = (short) Math.max(0, soundTimer - 1);
+                if (soundTimer == 0) {
+                    speaker.endBeep();
+                } else {
+                    speaker.startBeepIfNotStarted();
+                }
+                return true;
+            } finally {
+                lock.unlock();
+            }
+        });
+
+        this.cpuClock = new ClockSimulator(() -> {
+            lock.lock();
+            try {
+                ExecutionResult result = emulateCycle();
+                switch (result) {
+                    case OK -> {
+                        return true;
+                    }
+                    case END_PROGRAM, FATAL -> {
+                        return false;
+                    }
+                }
+                return false;
+            } finally {
+                lock.unlock();
+            }
+        });
     }
 
     // -------------------- Public Methods --------------------
@@ -120,118 +157,116 @@ public final class CPU {
         }
     }
 
-    public final void initAndLoadRom(File romFile) throws IOException {
+    public final void start(File romFile) {
         lock.lock();
         try {
-            if (!romFile.exists()) {
-                throw new RuntimeException("File '%s' not found!".formatted(romFile.toPath()));
-            }
-
-            this.programCounter = 512;
-            this.indexRegister = 0;
-            this.stackPointer = 0;
-            this.stack = new short[16];
-            this.memory = new byte[4096];
-            this.vRegister = new byte[16];
-            this.graphics = new boolean[32][64];
-            this.delayTimer = 0;
-            this.soundTimer = 0;
-            this.delayTimer = 0;
-            this.soundTimer = 0;
-
-            // load the system font set
-            System.arraycopy(FONT_SET, 0, this.memory, 0, FONT_SET.length);
-
-            // load the file contents into memory
-            byte[] fileBytes = Utilities.readBytes(romFile);
-            assert romFile.length() < memory.length - programCounter; // make sure we don't overrun memory
-            System.arraycopy(fileBytes, 0, memory, programCounter, fileBytes.length);
-
-            ClockSimulator delayClock = new ClockSimulator(60);
-            delayClock.withClockRegulation(() -> {
-                lock.lock();
-                try {
-                    waitForSignal();
-                    delayTimer = (short) Math.max(0, delayTimer - 1);
-                    soundTimer = (short) Math.max(0, soundTimer - 1);
-                    if (soundTimer == 0) {
-                        speaker.endBeep();
-                    } else {
-                        speaker.startBeepIfNotStarted();
-                    }
-                    return true;
-                } finally {
-                    lock.unlock();
-                }
-            });
-
+            initCPU();
+            readRomIntoMemory(romFile);
         } finally {
             lock.unlock();
         }
+        delayClock.start(DELAY_CLOCK_HZ);
+        cpuClock.start(500);
+        fireStarted();
+    }
+
+    public final void stop() {
+        cpuClock.stopGracefully();
+        delayClock.stopGracefully();
+        speaker.endBeep();
+        fireStopped();
+        initCPU();
+        fireRenderNeeded();
+    }
+
+    // -------------------- Private Methods --------------------
+
+    private void initCPU() {
+        assert !lock.isLocked();
+        this.programCounter = 512;
+        this.indexRegister = 0;
+        this.stackPointer = 0;
+        this.stack = new short[16];
+        this.memory = new byte[4096];
+        this.vRegister = new byte[16];
+        this.graphics = new boolean[32][64];
+        this.delayTimer = 0;
+        this.soundTimer = 0;
+        this.delayTimer = 0;
+        this.soundTimer = 0;
+
+        // load the system font set
+        System.arraycopy(FONT_SET, 0, this.memory, 0, FONT_SET.length);
 
         fireInit();
     }
 
-    public final ExecutionResult emulateCycle() {
-        lock.lock();
-        try {
-            waitForSignal();
-            renderFlag = false;
+    private void readRomIntoMemory(File romFile) {
+        assert !lock.isLocked();
 
-            // we hit the end
-            if (programCounter >= memory.length) {
-                return ExecutionResult.END_PROGRAM;
-            }
-
-            OperationState state = new OperationState(programCounter, memory);
-            fireExecuteStateChanged(state);
-
-            if ((int) state.getCurrentOpcode() == 0x0000) {
-                // current operation is empty
-                return ExecutionResult.END_PROGRAM;
-            }
-
-            programCounter += 2;
-            byte lowByte = state.getLowByte();
-            short currentOpcode = state.getCurrentOpcode();
-            short nnn = state.getNNN();
-            byte n = state.getN();
-            byte x = state.getX();
-            byte y = state.getY();
-
-            switch (state.getHighNibble()) {
-                case 0x0 -> do0X(currentOpcode);
-                case 0x1 -> do1X(nnn);
-                case 0x2 -> do2X(nnn);
-                case 0x3 -> do3X(lowByte, x);
-                case 0x4 -> do4X(lowByte, x);
-                case 0x5 -> do5X(x, y);
-                case 0x6 -> do6X(lowByte, x);
-                case 0x7 -> do7X(lowByte, x);
-                case 0x8 -> do8XY(n, x, y);
-                case 0x9 -> do9X(x, y);
-                case 0xA -> doAX(nnn);
-                case 0xB -> doBX(nnn);
-                case 0xC -> doCX(lowByte, x);
-                case 0xD -> doDX(n, x, y);
-                case 0xE -> doEX(n, x);
-                case 0xF -> doFX(lowByte, x);
-                default -> throw new IllegalArgumentException();
-            }
-
-            fireExecuteStateChanged(state);
-
-            if (renderFlag) {
-                fireRenderNeeded();
-            }
-
-            return ExecutionResult.OK;
-        } finally {
-            lock.unlock();
+        // load the file contents into memory
+        if (!romFile.exists()) {
+            throw new RuntimeException("File '%s' not found!".formatted(romFile.toPath()));
         }
+        byte[] fileBytes = Utilities.readBytes(romFile);
+        assert romFile.length() < memory.length - programCounter; // make sure we don't overrun memory
+        System.arraycopy(fileBytes, 0, memory, programCounter, fileBytes.length);
     }
 
-    // -------------------- Private Methods --------------------
+    private ExecutionResult emulateCycle() {
+        assert !lock.isLocked();
+        waitForSignal();
+        renderFlag = false;
+
+        // we hit the end
+        if (programCounter >= memory.length) {
+            return ExecutionResult.END_PROGRAM;
+        }
+
+        OperationState state = new OperationState(programCounter, memory);
+        fireExecuteStateChanged(state);
+
+        if ((int) state.getCurrentOpcode() == 0x0000) {
+            // current operation is empty
+            return ExecutionResult.END_PROGRAM;
+        }
+
+        programCounter += 2;
+        byte lowByte = state.getLowByte();
+        short currentOpcode = state.getCurrentOpcode();
+        short nnn = state.getNNN();
+        byte n = state.getN();
+        byte x = state.getX();
+        byte y = state.getY();
+
+        switch (state.getHighNibble()) {
+            case 0x0 -> do0X(currentOpcode);
+            case 0x1 -> do1X(nnn);
+            case 0x2 -> do2X(nnn);
+            case 0x3 -> do3X(lowByte, x);
+            case 0x4 -> do4X(lowByte, x);
+            case 0x5 -> do5X(x, y);
+            case 0x6 -> do6X(lowByte, x);
+            case 0x7 -> do7X(lowByte, x);
+            case 0x8 -> do8XY(n, x, y);
+            case 0x9 -> do9X(x, y);
+            case 0xA -> doAX(nnn);
+            case 0xB -> doBX(nnn);
+            case 0xC -> doCX(lowByte, x);
+            case 0xD -> doDX(n, x, y);
+            case 0xE -> doEX(n, x);
+            case 0xF -> doFX(lowByte, x);
+            default -> throw new IllegalArgumentException();
+        }
+
+        fireExecuteStateChanged(state);
+
+        if (renderFlag) {
+            fireRenderNeeded();
+        }
+
+        return ExecutionResult.OK;
+    }
 
     private void do0X(short currentOpcode) {
         if ((int) currentOpcode == 0x00E0) {
@@ -513,6 +548,18 @@ public final class CPU {
             try {
                 condition.await();
             } catch (InterruptedException ignore) {}
+        }
+    }
+
+    private void fireStarted() {
+        for (DebuggerListener l : ll.getListeners(DebuggerListener.class)) {
+            l.machineStarted();
+        }
+    }
+
+    private void fireStopped() {
+        for (DebuggerListener l : ll.getListeners(DebuggerListener.class)) {
+            l.machineStopped();
         }
     }
 
