@@ -109,6 +109,10 @@ final class CHIP8Emulator {
             public void stopEmulator() {
                 Utilities.invokeInBackground(cpu::stop);
             }
+            @Override
+            public void cpuSpeedChanged(int cpuTickHz) {
+                Utilities.invokeInBackground(() -> cpu.setCpuClock(cpuTickHz));
+            }
         };
 
         // init the graphics system and show the UI

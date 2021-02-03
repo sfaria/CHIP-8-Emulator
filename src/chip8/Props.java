@@ -37,6 +37,7 @@ public final class Props {
     private static final String ROM_DIR_KEY = "lastOpenedROMDirectory";
     private static final String SELECTED_PALETTE_KEY = "selectedColorPaletteId";
     private static final String CURRENT_VOLUME_KEY = "currentVolume";
+    private static final String CPU_CLOCK_SPEED_KEY = "cpuSpeedInHz";
 
     // -------------------- Public Statics --------------------
 
@@ -82,6 +83,19 @@ public final class Props {
 
     public static void setSavedVolume(double volume) {
         PROPS.setProperty(CURRENT_VOLUME_KEY, String.valueOf(volume));
+    }
+
+    public static int getSavedCPUClockSpeed() {
+        String stringValue = PROPS.getProperty(CPU_CLOCK_SPEED_KEY, "500");
+        int val = 500;
+        try {
+            val = Integer.parseInt(stringValue);
+        } catch (NumberFormatException ignored) {}
+        return val;
+    }
+
+    public static void setSavedCPUSpeed(int cpuSpeedHz) {
+        PROPS.setProperty(CPU_CLOCK_SPEED_KEY, String.valueOf(cpuSpeedHz));
     }
 
     // -------------------- Default Static Methods --------------------

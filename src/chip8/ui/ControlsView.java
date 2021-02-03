@@ -35,13 +35,17 @@ public final class ControlsView extends JComponent {
             public void machineStateChanged(MachineState currentState) {
                 fireMachineStateChanged(currentState);
             }
+            @Override
+            public void machineStopped() {
+                SwingUtilities.invokeLater(() -> firePropertyChange("fileSelected", null, null));
+            }
         });
         setLayout(new BorderLayout());
         setBorder(new EmptyBorder(4, 8, 8, 8));
         setPreferredSize(new Dimension(640, 240));
         add(createRegisterPanel(), BorderLayout.CENTER);
         add(createBreakpointPanel(cpu), BorderLayout.EAST);
-        add(createControlsPanel(cpu), BorderLayout.WEST);
+        add(createControlsPanel(), BorderLayout.WEST);
     }
 
     // -------------------- Public Methods --------------------
@@ -52,19 +56,12 @@ public final class ControlsView extends JComponent {
 
     // -------------------- Private Methods --------------------
 
-    private JPanel createControlsPanel(CPU cpu) {
+    private JPanel createControlsPanel() {
         JPanel openFilePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         JButton openFileButton = new JButton(new OpenROMAction());
         DynamicLabel<File> selectedFileLabel = new DynamicLabel<>(this, "fileSelected", "<No ROM Loaded!>", File::getName);
         openFilePanel.add(openFileButton);
         openFilePanel.add(selectedFileLabel);
-
-        cpu.addDebuggerListener(new DebuggerListener() {
-            @Override
-            public void machineStopped() {
-                SwingUtilities.invokeLater(() -> firePropertyChange("fileSelected", null, null));
-            }
-        });
 
         JPanel volumePanel = new JPanel(new GridLayout(2, 1, 8, 4));
         volumePanel.add(new JLabel("Volume Control:"));
@@ -84,6 +81,22 @@ public final class ControlsView extends JComponent {
         });
         volumePanel.add(volumeSlider);
 
+        JPanel cpuPanel = new JPanel(new GridLayout(2, 1, 8, 4));
+        cpuPanel.add(new JLabel("CPU Frequency (Hz): "));
+        SpinnerNumberModel model = new SpinnerNumberModel(Props.getSavedCPUClockSpeed(), 100, 900, 100);
+        JSpinner freqSpinner = new JSpinner(model);
+        JFormattedTextField tf = ((JSpinner.DefaultEditor) freqSpinner.getEditor()).getTextField();
+        tf.setEnabled(false);
+        tf.setForeground(Color.BLACK);
+        tf.setBackground(Color.WHITE);
+        tf.setHorizontalAlignment(JTextField.LEFT);
+        cpuPanel.add(freqSpinner);
+
+        freqSpinner.addChangeListener(e -> {
+            int frequency = (int) model.getNumber();
+            fireFrequencyChanged(frequency);
+        });
+
         JPanel palettePanel = new JPanel(new GridLayout(2, 1, 8, 4));
         JComboBox<ColorPalette> paletteJComboBox = new JComboBox<>(new PaletteComboModel());
         paletteJComboBox.setRenderer(new PaletteRenderer());
@@ -95,9 +108,10 @@ public final class ControlsView extends JComponent {
             firePaletteChanged(palette);
         });
 
-        JPanel controlsPanel = new JPanel(new GridLayout(3, 1, 8, 4));
+        JPanel controlsPanel = new JPanel(new GridLayout(4, 1, 8, 4));
         controlsPanel.setBorder(new TitledBorder(new LineBorder(Color.GRAY, 2, true), "Controls"));
         controlsPanel.add(openFilePanel);
+        controlsPanel.add(cpuPanel);
         controlsPanel.add(palettePanel);
         controlsPanel.add(volumePanel);
         return controlsPanel;
@@ -174,6 +188,12 @@ public final class ControlsView extends JComponent {
         );
         controlPanel.add(operationPanel, BorderLayout.CENTER);
         return controlPanel;
+    }
+
+    private void fireFrequencyChanged(int frequency) {
+        for (ControlsListener l : ll.getListeners(ControlsListener.class)) {
+            l.cpuSpeedChanged(frequency);
+        }
     }
 
     private void fireVolumeChanged(double volume) {

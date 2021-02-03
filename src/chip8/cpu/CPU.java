@@ -1,5 +1,6 @@
 package chip8.cpu;
 
+import chip8.Props;
 import chip8.hardware.ClockSimulator;
 import chip8.hardware.Keyboard;
 import chip8.hardware.PCSpeaker;
@@ -157,6 +158,11 @@ public final class CPU {
         }
     }
 
+    public final void setCpuClock(int cpuCLockHz) {
+        cpuClock.stopGracefully();
+        cpuClock.start(cpuCLockHz);
+    }
+
     public final void start(File romFile) {
         lock.lock();
         try {
@@ -166,7 +172,7 @@ public final class CPU {
             lock.unlock();
         }
         delayClock.start(DELAY_CLOCK_HZ);
-        cpuClock.start(500);
+        cpuClock.start(Props.getSavedCPUClockSpeed());
         fireStarted();
     }
 

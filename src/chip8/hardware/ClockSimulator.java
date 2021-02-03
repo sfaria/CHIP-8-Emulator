@@ -2,7 +2,6 @@ package chip8.hardware;
 
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -12,32 +11,29 @@ public final class ClockSimulator {
 
     // -------------------- Private Variables ---------------
 
-    private final Timer timer;
+    private Timer timer;
     private final BooleanSupplier work;
-    private final AtomicBoolean keepRunning = new AtomicBoolean(true);
 
     // -------------------- Constructors --------------------
 
     public ClockSimulator(BooleanSupplier work) {
-        this.timer = new Timer(true);
         this.work = work;
     }
-
 
     // -------------------- Public Methods --------------------
 
     public final void stopGracefully() {
-        keepRunning.set(false);
+        timer.cancel();
     }
 
     public final void start(int hzTickRate) {
-        keepRunning.set(true);
         long periodInMs = getPeriodInMs(hzTickRate);
+        timer = new Timer(true);
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
                 boolean continueExecution = work.getAsBoolean();
-                if (!continueExecution || !keepRunning.get()) {
+                if (!continueExecution) {
                     timer.cancel();
                 }
             }

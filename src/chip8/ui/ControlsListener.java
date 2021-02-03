@@ -15,4 +15,5 @@ public interface ControlsListener extends EventListener {
     default void setVolume(double volume) {}
     default void romSelected(File romFile) {}
     default void colorPaletteChanged(ColorPalette selectedPalette) {}
+    default void cpuSpeedChanged(int cpuTickHz) {}
 }
