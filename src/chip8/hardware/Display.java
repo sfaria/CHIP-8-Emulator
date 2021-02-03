@@ -5,6 +5,9 @@ import chip8.cpu.CPU;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.HierarchyBoundsAdapter;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
 import java.awt.image.BufferStrategy;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Timer;
@@ -28,7 +31,7 @@ public final class Display extends Canvas {
 
     // -------------------- Constructors --------------------
 
-    public Display(CPU cpu) {
+    public Display(JFrame parent, CPU cpu) {
         this.toolkit = Toolkit.getDefaultToolkit();
         cpu.addRenderListener(graphicsMemory -> {
             try {
@@ -40,6 +43,20 @@ public final class Display extends Canvas {
         setPreferredSize(new Dimension(width * scaleFactor, height * scaleFactor));
         setMinimumSize(new Dimension(width * scaleFactor, height * scaleFactor));
         setIgnoreRepaint(true);
+
+        parent.addHierarchyListener(e -> {
+            if (parent.isVisible()) {
+                createBufferStrategy(2);
+                Timer timer = new Timer("render-timer", false);
+                timer.scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        SwingUtilities.invokeLater(() -> render());
+
+                    }
+                }, 0, 16);
+            }
+        });
     }
 
 
@@ -47,18 +64,6 @@ public final class Display extends Canvas {
 
     public final void setColorPalette(ColorPalette palette) {
         SwingUtilities.invokeLater(() -> this.palette = palette);
-    }
-
-    public final void startRendering() {
-        createBufferStrategy(2);
-        Timer timer = new Timer("render-timer", false);
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                SwingUtilities.invokeLater(() -> render());
-
-            }
-        }, 0, 16);
     }
 
     // -------------------- Private Methods --------------------

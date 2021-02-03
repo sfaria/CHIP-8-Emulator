@@ -36,10 +36,11 @@ final class CHIP8Emulator {
     // -------------------- Private Static Methods --------------------
 
     private static void setupGraphicsSystem(CPU cpu, ControlsListener listener) {
+        JFrame frame = new JFrame("CHIP8 Emulator");
         JPanel mainPanel = new JPanel(new BorderLayout());
 
         JPanel displayPanel = new JPanel(new BorderLayout());
-        Display view = new Display(cpu);
+        Display view = new Display(frame, cpu);
 
         JPanel displayBorder = new JPanel();
         displayBorder.setBorder(new EmptyBorder(4, 4, 4, 4));
@@ -57,7 +58,6 @@ final class CHIP8Emulator {
         displayPanel.add(controlsView, BorderLayout.SOUTH);
         mainPanel.add(displayPanel, BorderLayout.CENTER);
 
-        JFrame frame = new JFrame("CHIP8 Emulator");
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -80,7 +80,6 @@ final class CHIP8Emulator {
         frame.setResizable(false);
         frame.pack();
         frame.setVisible(true);
-        view.startRendering();
     }
 
     private static void runRom(CPU cpu, File romFile) {
