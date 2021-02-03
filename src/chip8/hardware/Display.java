@@ -1,8 +1,7 @@
 package chip8.hardware;
 
+import chip8.Props;
 import chip8.cpu.CPU;
-import chip8.ui.ColorPalette;
-import chip8.ui.Palettes;
 
 import javax.swing.*;
 import java.awt.*;
@@ -23,7 +22,8 @@ public final class Display extends Canvas {
     private final int height = 32;
     private final int scaleFactor = 10;
     private final Toolkit toolkit;
-    private ColorPalette palette = Palettes.ALL_PALETTES.get(0);
+
+    private ColorPalette palette = Props.getSavedPalette();
     private boolean[][] memory = new boolean[height][width];
 
     // -------------------- Constructors --------------------
@@ -41,6 +41,7 @@ public final class Display extends Canvas {
         setMinimumSize(new Dimension(width * scaleFactor, height * scaleFactor));
         setIgnoreRepaint(true);
     }
+
 
     // -------------------- Default Methods --------------------
 

@@ -6,15 +6,16 @@ import chip8.hardware.ClockSimulator;
 import chip8.hardware.Display;
 import chip8.hardware.Keyboard;
 import chip8.hardware.PCSpeaker;
-import chip8.ui.ColorPalette;
+import chip8.hardware.ColorPalette;
 import chip8.ui.ControlsListener;
 import chip8.ui.ControlsView;
 import chip8.util.Utilities;
-import jdk.jshell.execution.Util;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 
@@ -57,7 +58,22 @@ final class CHIP8Emulator {
         mainPanel.add(displayPanel, BorderLayout.CENTER);
 
         JFrame frame = new JFrame("CHIP8 Emulator");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                int response = JOptionPane.showConfirmDialog(
+                        frame,
+                        "Are you sure you want to close this window?", "Close Window?",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+                if (response == JOptionPane.YES_OPTION){
+                    Props.writeProperties();
+                    System.exit(0);
+                }
+            }
+        });
+        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         frame.setSize(1024, 520);
         frame.getContentPane().setLayout(new BorderLayout());
         frame.getContentPane().add(mainPanel, BorderLayout.CENTER);

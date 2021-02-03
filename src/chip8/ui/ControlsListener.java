@@ -1,5 +1,7 @@
 package chip8.ui;
 
+import chip8.hardware.ColorPalette;
+
 import java.io.File;
 import java.util.EventListener;
 

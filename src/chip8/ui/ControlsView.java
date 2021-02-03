@@ -1,6 +1,9 @@
 package chip8.ui;
 
+import chip8.Props;
 import chip8.cpu.CPU;
+import chip8.hardware.ColorPalette;
+import chip8.hardware.Palettes;
 import chip8.util.Utilities;
 
 import javax.swing.*;
@@ -12,7 +15,6 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.io.File;
-import java.util.Hashtable;
 import java.util.Objects;
 
 /**
@@ -47,7 +49,7 @@ public final class ControlsView extends JComponent {
 
     private JPanel createControlsPanel() {
         JPanel openFilePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        JButton openFileButton = new JButton(new OpenFileAction());
+        JButton openFileButton = new JButton(new OpenROMAction());
         DynamicLabel<File> selectedFileLabel = new DynamicLabel<>(this, "fileSelected", "<No ROM Loaded!>", File::getName);
         openFilePanel.add(openFileButton);
         openFilePanel.add(selectedFileLabel);
@@ -55,7 +57,8 @@ public final class ControlsView extends JComponent {
         JPanel volumePanel = new JPanel(new GridLayout(2, 1, 8, 4));
         volumePanel.add(new JLabel("Volume Control:"));
 
-        JSlider volumeSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, 50);
+        int vol = (int) (Props.getSavedVolume() * 100.0d);
+        JSlider volumeSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, vol);
         volumeSlider.setMajorTickSpacing(10);
         volumeSlider.setPaintTicks(true);
         volumeSlider.setPaintLabels(false);
@@ -64,6 +67,7 @@ public final class ControlsView extends JComponent {
                 int volume = volumeSlider.getValue();
                 double adjustedVolume = (double) volume / 100.0d;
                 fireVolumeChanged(adjustedVolume);
+                Props.setSavedVolume(adjustedVolume);
             }
         });
         volumePanel.add(volumeSlider);
@@ -181,7 +185,7 @@ public final class ControlsView extends JComponent {
     }
 
     private static final class PaletteComboModel extends AbstractListModel<ColorPalette> implements ComboBoxModel<ColorPalette> {
-        private ColorPalette selectedItem = Palettes.ALL_PALETTES.get(0);
+        private ColorPalette selectedItem = Props.getSavedPalette();
 
         @Override public int getSize() {
             return Palettes.ALL_PALETTES.size();
@@ -193,6 +197,7 @@ public final class ControlsView extends JComponent {
 
         @Override public void setSelectedItem(Object anItem) {
             selectedItem = (ColorPalette) anItem;
+            Props.setSelectedPalette(selectedItem);
         }
 
         @Override public Object getSelectedItem() {
@@ -200,30 +205,32 @@ public final class ControlsView extends JComponent {
         }
     }
 
-    private final class OpenFileAction extends AbstractAction {
-        OpenFileAction() {
+    private final class OpenROMAction extends AbstractAction {
+        OpenROMAction() {
             setIcon("folder.png");
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
             setIcon("loading.gif");
-            Utilities.withSavedROMLocation(lastDirectoryOpened -> {
-                assert SwingUtilities.isEventDispatchThread();
-                setIcon("folder.png");
-                JFileChooser fileChooser = new JFileChooser(lastDirectoryOpened);
-                fileChooser.setDialogTitle("Select a CHIP-8 ROM!");
-                fileChooser.setMultiSelectionEnabled(false);
-                fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                int result = fileChooser.showOpenDialog(ControlsView.this);
-                if (result == JFileChooser.APPROVE_OPTION) {
-                    File selectedFile = fileChooser.getSelectedFile();
-                    if (selectedFile != null && selectedFile.exists()) {
-                        lastDirectoryOpened = selectedFile.getParentFile();
-                        Utilities.writeSavedROMLocation(lastDirectoryOpened);
+            Utilities.invokeInBackground(() -> {
+                final File lastDirectoryOpened = Props.getSavedROMLocation();
+                SwingUtilities.invokeLater(() -> {
+                    setIcon("folder.png");
+                    JFileChooser fileChooser = new JFileChooser(lastDirectoryOpened);
+                    fileChooser.setDialogTitle("Select a CHIP-8 ROM!");
+                    fileChooser.setMultiSelectionEnabled(false);
+                    fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+                    int result = fileChooser.showOpenDialog(ControlsView.this);
+                    if (result == JFileChooser.APPROVE_OPTION) {
+                        File selectedFile = fileChooser.getSelectedFile();
+                        if (selectedFile != null && selectedFile.exists()) {
+                            File newDir = selectedFile.getParentFile();
+                            Props.setSavedROMLocation(newDir);
+                        }
+                        fireFileOpened(selectedFile);
                     }
-                    fireFileOpened(selectedFile);
-                }
+                });
             });
         }
 
