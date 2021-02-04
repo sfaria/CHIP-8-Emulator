@@ -159,9 +159,14 @@ public final class CPU {
     }
 
     public final void setCpuClock(int cpuCLockHz) {
-        if (cpuClock.isRunning()) {
-            cpuClock.stopGracefully();
-            cpuClock.start(cpuCLockHz);
+        lock.lock();
+        try {
+            if (cpuClock.isRunning()) {
+                cpuClock.stopGracefully();
+                cpuClock.start(cpuCLockHz);
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -179,12 +184,17 @@ public final class CPU {
     }
 
     public final void stop() {
-        cpuClock.stopGracefully();
-        delayClock.stopGracefully();
-        speaker.endBeep();
-        fireStopped();
-        initCPU();
-        fireRenderNeeded();
+        lock.lock();
+        try {
+            cpuClock.stopGracefully();
+            delayClock.stopGracefully();
+            speaker.endBeep();
+            fireStopped();
+            initCPU();
+            fireRenderNeeded();
+        } finally {
+            lock.unlock();
+        }
     }
 
     // -------------------- Private Methods --------------------
