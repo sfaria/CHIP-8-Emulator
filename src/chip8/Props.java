@@ -16,7 +16,7 @@ public final class Props {
 
     // -------------------- Private Statics --------------------
 
-    private static final Path PROPS_PATH = Path.of(System.getenv("LOCALAPPDATA"))
+    private static final Path PROPS_PATH = getUserDataPath()
             .resolve("chip8")
             .resolve("c8.properties");
 
@@ -107,6 +107,22 @@ public final class Props {
             PROPS.store(out, "JCHIP8 v1");
         } catch (IOException e) {
             throw new RuntimeException("Config file '%s' failed to save to disk.".formatted(file.getPath()), e);
+        }
+    }
+
+    // -------------------- Private Statics --------------------
+
+    private static Path getUserDataPath() {
+        String os = System.getProperty("os.name").toUpperCase();
+        if (os.startsWith("WIN")) {
+            return Path.of(System.getProperty("LOCALAPPDATA"));
+        } else if (os.contains("MAC")) {
+            String userHome = System.getProperty("user.home");
+            return Path.of(userHome, "Library", "ApplicationSupport");
+        } else {
+            // just assume Linux
+            String userHome = System.getProperty("user.home");
+            return Path.of(userHome, ".config");
         }
     }
 
