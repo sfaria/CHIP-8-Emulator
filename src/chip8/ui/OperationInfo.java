@@ -21,14 +21,14 @@ public final class OperationInfo {
 
     // -------------------- Default Methods --------------------
 
-    public final String asHexString() {
+    public String asHexString() {
         return Utilities.toHex(opcode);
     }
 
     // -------------------- Overridden Methods --------------------
 
     @Override
-    public final boolean equals(Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         OperationInfo that = (OperationInfo) o;
@@ -36,7 +36,7 @@ public final class OperationInfo {
     }
 
     @Override
-    public final int hashCode() {
+    public int hashCode() {
         return Objects.hash(opcode);
     }
 }

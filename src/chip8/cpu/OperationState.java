@@ -41,48 +41,48 @@ public final class OperationState {
 
     // -------------------- Public Methods --------------------
 
-    public final OperationInfo getCurrent() {
+    public OperationInfo getCurrent() {
         return new OperationInfo(currentOpcode);
     }
 
-    public final OperationInfo getNext() {
+    public OperationInfo getNext() {
         return new OperationInfo(nextOpcode);
     }
 
     // -------------------- Default Methods --------------------
 
-    final byte getLowByte() {
+    byte getLowByte() {
         return lowByte;
     }
 
-    final short getCurrentOpcode() {
+    short getCurrentOpcode() {
         return currentOpcode;
     }
 
-    final short getNNN() {
+    short getNNN() {
         return nnn;
     }
 
-    final byte getN() {
+    byte getN() {
         return n;
     }
 
-    final byte getX() {
+    byte getX() {
         return x;
     }
 
-    final byte getY() {
+    byte getY() {
         return y;
     }
 
-    final byte getHighNibble() {
+    byte getHighNibble() {
         return highNibble;
     }
 
     // -------------------- Overridden Methods --------------------
 
     @Override
-    public final String toString() {
+    public String toString() {
         return toHex(currentOpcode) + " (" + Integer.toBinaryString(currentOpcode) + ")";
     }
 }

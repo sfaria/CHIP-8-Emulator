@@ -30,19 +30,19 @@ public final class MachineState {
 
     // -------------------- Default Methods --------------------
 
-    final OperationInfo getCurrentOperation() {
+    OperationInfo getCurrentOperation() {
         return currentOperation;
     }
 
-    final OperationInfo getNextOperation() {
+    OperationInfo getNextOperation() {
         return nextOperation;
     }
 
-    final String getProgramCounter() {
+    String getProgramCounter() {
         return Utilities.toHex(programCounter & 0x0FFF);
     }
 
-    final String getRegisterAt(int registerIndex) {
+    String getRegisterAt(int registerIndex) {
         if (registerIndex < 0 || registerIndex > 15) {
             throw new IllegalStateException("Unknown register: V" + registerIndex);
         }

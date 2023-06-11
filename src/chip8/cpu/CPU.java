@@ -129,17 +129,17 @@ public final class CPU {
 
     // -------------------- Public Methods --------------------
 
-    public final void addDebuggerListener(DebuggerListener l) {
+    public void addDebuggerListener(DebuggerListener l) {
         Objects.requireNonNull(l);
         ll.add(DebuggerListener.class, l);
     }
 
-    public final void addRenderListener(RenderListener l) {
+    public void addRenderListener(RenderListener l) {
         Objects.requireNonNull(l);
         ll.add(RenderListener.class, l);
     }
 
-    public final void setShouldWait(boolean shouldWait) {
+    public void setShouldWait(boolean shouldWait) {
         lock.lock();
         try {
             this.wait = shouldWait;
@@ -148,7 +148,7 @@ public final class CPU {
         }
     }
 
-    public final void endWait() {
+    public void endWait() {
         lock.lock();
         try {
             this.isWaiting = false;
@@ -158,7 +158,7 @@ public final class CPU {
         }
     }
 
-    public final void setCpuClock(int cpuCLockHz) {
+    public void setCpuClock(int cpuCLockHz) {
         lock.lock();
         try {
             if (cpuClock.isRunning()) {
@@ -170,7 +170,7 @@ public final class CPU {
         }
     }
 
-    public final void start(File romFile) {
+    public void start(File romFile) {
         lock.lock();
         try {
             initCPU();
@@ -183,7 +183,7 @@ public final class CPU {
         fireStarted();
     }
 
-    public final void stop() {
+    public void stop() {
         lock.lock();
         try {
             cpuClock.stopGracefully();
@@ -208,8 +208,6 @@ public final class CPU {
         this.memory = new byte[4096];
         this.vRegister = new byte[16];
         this.graphics = new boolean[32][64];
-        this.delayTimer = 0;
-        this.soundTimer = 0;
         this.delayTimer = 0;
         this.soundTimer = 0;
 

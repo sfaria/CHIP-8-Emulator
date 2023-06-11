@@ -1,7 +1,5 @@
 package chip8.ui;
 
-import chip8.ui.MachineState;
-
 import java.util.EventListener;
 
 /**
