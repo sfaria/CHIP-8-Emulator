@@ -5,3 +5,8 @@
  * Learn more about Gradle by exploring our samples at https://docs.gradle.org/8.1.1/samples
  * This project uses @Incubating APIs which are subject to change.
  */
+
+plugins {
+    java
+}
+
